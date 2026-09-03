@@ -1,27 +1,33 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Clock } from "lucide-react";
 import type { Asset } from "@/lib/assets";
 import type { Position } from "@/lib/round";
 import { didWin } from "@/lib/round";
-import { formatPrice, formatUsd } from "@/lib/format";
+import { formatDuration, formatPrice, formatUsd } from "@/lib/format";
 
 interface PositionCardProps {
   asset: Asset;
   position: Position;
   currentPrice: number;
+  /** True while the position is queued for a window that hasn't opened yet. */
+  pending: boolean;
+  /** Seconds until the position's window opens (pending) or closes (live). */
+  secondsLeft: number;
 }
 
 /**
  * Takes the place of the UP/DOWN buttons once the user is in. The point is that
- * the wait stops being dead time: the chart now has their entry on it and this
+ * the wait stops being dead time: the chart now has the strike on it and this
  * card tells them, live, whether they're on the right side of it.
  */
 export function PositionCard({
   asset,
   position,
   currentPrice,
+  pending,
+  secondsLeft,
 }: PositionCardProps) {
   const isUp = position.direction === "up";
   const Icon = isUp ? ArrowUpRight : ArrowDownRight;
@@ -35,7 +41,11 @@ export function PositionCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={`mx-5 overflow-hidden rounded-2xl border bg-zinc-900/60 shadow-card ${
-        winning ? "border-up/40" : "border-down/40"
+        pending
+          ? "border-zinc-700"
+          : winning
+            ? "border-up/40"
+            : "border-down/40"
       }`}
     >
       <div className="flex items-center justify-between px-4 pt-3.5">
@@ -54,28 +64,47 @@ export function PositionCard({
           </span>
         </span>
 
-        {/* Live verdict — the reason to keep watching. */}
-        <span
-          className={`flex items-center gap-1.5 text-[12px] font-bold ${
-            winning ? "text-up-soft" : "text-down-soft"
-          }`}
-        >
+        {/* Live verdict — the reason to keep watching. Withheld while the
+            position is queued, because there is no verdict yet to give. */}
+        {pending ? (
+          <span className="flex items-center gap-1.5 text-[12px] font-bold text-zinc-400">
+            <Clock className="h-3.5 w-3.5" strokeWidth={2.6} />
+            NEXT ROUND
+          </span>
+        ) : (
           <span
-            className={`h-1.5 w-1.5 animate-pulse-ring rounded-full ${
-              winning ? "bg-up" : "bg-down"
+            className={`flex items-center gap-1.5 text-[12px] font-bold ${
+              winning ? "text-up-soft" : "text-down-soft"
             }`}
-          />
-          {winning ? "WINNING" : "LOSING"}
-        </span>
+          >
+            <span
+              className={`h-1.5 w-1.5 animate-pulse-ring rounded-full ${
+                winning ? "bg-up" : "bg-down"
+              }`}
+            />
+            {winning ? "WINNING" : "LOSING"}
+          </span>
+        )}
       </div>
 
       <div className="mt-2.5 grid grid-cols-3 divide-x divide-zinc-800/80 border-t border-zinc-800/80 text-center">
-        <Stat label="Entry" value={formatPrice(position.entryPrice, asset.decimals)} />
-        <Stat label="Now" value={formatPrice(currentPrice, asset.decimals)} />
+        <Stat
+          label="Strike"
+          value={formatPrice(position.strike, asset.decimals)}
+        />
+        {pending ? (
+          <Stat
+            label="Starts in"
+            value={formatDuration(secondsLeft)}
+            tone="text-zinc-300"
+          />
+        ) : (
+          <Stat label="Now" value={formatPrice(currentPrice, asset.decimals)} />
+        )}
         <Stat
           label="To win"
           value={formatUsd(toWin)}
-          tone={winning ? "text-up-soft" : "text-zinc-400"}
+          tone={!pending && winning ? "text-up-soft" : "text-zinc-400"}
         />
       </div>
     </motion.div>

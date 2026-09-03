@@ -87,9 +87,9 @@ export function SettlementOverlay({
           >
             {position.direction === "up" ? "UP" : "DOWN"}
           </span>{" "}
-          from{" "}
+          against a strike of{" "}
           <span className="tnum font-semibold text-zinc-300">
-            {formatPrice(position.entryPrice, asset.decimals)}
+            {formatPrice(position.strike, asset.decimals)}
           </span>
         </p>
 

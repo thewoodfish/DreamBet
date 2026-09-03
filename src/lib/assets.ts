@@ -102,6 +102,24 @@ export function nextPrice(asset: Asset, last: number): number {
   return Math.max(last * (1 + shock + pull), asset.basePrice * 0.5);
 }
 
+/**
+ * The line every player in the window is betting against, frozen when the
+ * window opens. Deriving it from (symbol, window) means every client in a
+ * Telegram group computes the same strike with no shared state — and, unlike a
+ * per-user entry price, it makes UP and DOWN genuinely opposite outcomes, which
+ * is what the parimutuel odds in `poolSnapshot` assume.
+ *
+ * Step 4 replaces this with the strike the event contract actually published.
+ */
+export function strikeFor(asset: Asset, windowIndex: number): number {
+  const rand = mulberry32(seedFromSymbol(`${asset.symbol}-strike-${windowIndex}`));
+  // Sit within a plausible tick of the base price so the live feed straddles it.
+  const offset = (rand() - 0.5) * asset.volatility * 6;
+  const raw = asset.basePrice * (1 + offset);
+  const factor = 10 ** asset.decimals;
+  return Math.round(raw * factor) / factor;
+}
+
 export interface PoolSnapshot {
   /** Share of the pool sitting on UP, 0–1. */
   upShare: number;

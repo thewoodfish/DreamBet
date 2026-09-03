@@ -26,6 +26,14 @@ export function truncateAddress(address: string, lead = 6, tail = 4): string {
   return `${address.slice(0, lead)}…${address.slice(-tail)}`;
 }
 
+/** Wall-clock ms → "3:15 PM". Client-only: the server can't know the timezone. */
+export function formatClockTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** Seconds → "5:42" (or "1:05:42" once past an hour). */
 export function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));

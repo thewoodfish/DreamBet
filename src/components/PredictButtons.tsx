@@ -1,35 +1,61 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Lock } from "lucide-react";
 import type { PoolSnapshot } from "@/lib/assets";
 import type { Direction } from "@/lib/round";
+import { formatDuration } from "@/lib/format";
 
 interface PredictButtonsProps {
   pool: PoolSnapshot;
-  disabled: boolean;
+  /** The current window stopped accepting bets; these now target the next one. */
+  locked: boolean;
+  /** False until the client clock ticks — we don't know which window we're in yet. */
+  ready: boolean;
+  /** Seconds until the current window closes, i.e. until the next one opens. */
+  secondsLeft: number;
   onPredict: (direction: Direction) => void;
 }
 
 export function PredictButtons({
   pool,
-  disabled,
+  locked,
+  ready,
+  secondsLeft,
   onPredict,
 }: PredictButtonsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
-      <PredictButton
-        direction="up"
-        payout={pool.payoutUp}
-        disabled={disabled}
-        onPredict={onPredict}
-      />
-      <PredictButton
-        direction="down"
-        payout={pool.payoutDown}
-        disabled={disabled}
-        onPredict={onPredict}
-      />
+    <div className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
+      {/* A locked window used to dead-end the whole screen. Betting never stops
+          now — it rolls onto the next window, and this line says so. */}
+      {locked && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 py-1.5 text-[11px] font-medium text-zinc-400"
+        >
+          <Lock className="h-3 w-3 shrink-0 text-zinc-500" strokeWidth={2.4} />
+          This round is settling — you&rsquo;re betting the next one, opens in{" "}
+          <span className="tnum font-mono font-semibold text-zinc-200">
+            {formatDuration(secondsLeft)}
+          </span>
+        </motion.p>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <PredictButton
+          direction="up"
+          payout={pool.payoutUp}
+          disabled={!ready}
+          onPredict={onPredict}
+        />
+        <PredictButton
+          direction="down"
+          payout={pool.payoutDown}
+          disabled={!ready}
+          onPredict={onPredict}
+        />
+      </div>
     </div>
   );
 }

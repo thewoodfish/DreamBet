@@ -13,12 +13,13 @@ import { PriceWidget } from "@/components/PriceWidget";
 import { SettlementOverlay } from "@/components/SettlementOverlay";
 import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
-import { useEventWindow } from "@/hooks/useEventWindow";
+import { useEventWindow, windowSettleAt } from "@/hooks/useEventWindow";
 import { usePriceFeed } from "@/hooks/usePriceFeed";
 import {
   DEFAULT_ASSET,
   getAsset,
   poolSnapshot,
+  strikeFor,
   type AssetSymbol,
 } from "@/lib/assets";
 import type { LeaderboardScope } from "@/lib/leaderboard";
@@ -41,7 +42,6 @@ export default function Home() {
   const [round, setRound] = useState<RoundState>("open");
   const [position, setPosition] = useState<Position | null>(null);
   const [settlePrice, setSettlePrice] = useState<number | null>(null);
-  const [committedWindow, setCommittedWindow] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTab, setSheetTab] = useState<RecordTab>("record");
   // Step 5 reads Telegram's initData: chat_instance only exists when the Mini
@@ -53,6 +53,23 @@ export default function Home() {
   const feed = usePriceFeed(asset);
   const eventWindow = useEventWindow();
 
+  // The line a new bet would settle against — the next window's once the
+  // current one locks. Shared by every player, so UP and DOWN are opposites.
+  const bettableStrike = strikeFor(asset, eventWindow.bettableWindow);
+
+  // A position queued for a window that hasn't opened yet: no verdict to show.
+  const pending =
+    position !== null &&
+    eventWindow.ready &&
+    position.targetWindow > eventWindow.windowIndex;
+
+  // Once the user is in, the chart tracks *their* line rather than the one on
+  // offer — the two differ only for a bet queued into the next window.
+  const shownStrike = position ? position.strike : bettableStrike;
+  const shownSettleAt = eventWindow.ready
+    ? windowSettleAt(position ? position.targetWindow : eventWindow.bettableWindow)
+    : null;
+
   // Streak only advances on a win, and resets to zero on a loss.
   const streak =
     position && settlePrice !== null && didWin(position, settlePrice)
@@ -63,18 +80,18 @@ export default function Home() {
     setPosition({
       direction,
       stake: MOCK_STAKE,
+      strike: bettableStrike,
       entryPrice: feed.price,
+      targetWindow: eventWindow.bettableWindow,
       payoutMultiplier:
         direction === "up" ? pool.payoutUp : pool.payoutDown,
     });
-    setCommittedWindow(eventWindow.windowIndex);
     setRound("committed");
   }
 
   function resetRound() {
     setPosition(null);
     setSettlePrice(null);
-    setCommittedWindow(null);
     setRound("open");
   }
 
@@ -102,39 +119,41 @@ export default function Home() {
     const staged: Position = position ?? {
       direction: "up",
       stake: MOCK_STAKE,
+      strike: strikeFor(asset, eventWindow.windowIndex),
       entryPrice: feed.price * 0.9985,
+      targetWindow: eventWindow.windowIndex,
       payoutMultiplier: pool.payoutUp,
     };
-    setPosition(staged);
+    setPosition({ ...staged, targetWindow: eventWindow.windowIndex });
     setSettlePrice(next === "settled" ? feed.price : null);
-    setCommittedWindow(eventWindow.windowIndex);
     setRound(next);
   }
 
-  // The window the position was opened in has rolled over: freeze the settle
-  // price and show the result.
+  // The position's window has closed: freeze the settle price and show the
+  // result. `>` rather than `!==` so a bet queued into the next window survives
+  // the rollover that *starts* it.
   useEffect(() => {
     if (
       round === "committed" &&
-      committedWindow !== null &&
+      position !== null &&
       eventWindow.ready &&
-      eventWindow.windowIndex !== committedWindow
+      eventWindow.windowIndex > position.targetWindow
     ) {
       setSettlePrice(feed.price);
       setRound("settled");
     }
-  }, [round, committedWindow, eventWindow.ready, eventWindow.windowIndex, feed.price]);
+  }, [round, position, eventWindow.ready, eventWindow.windowIndex, feed.price]);
 
   return (
     <div className="flex min-h-dvh justify-center bg-black">
       <main className="relative flex h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-zinc-950 sm:my-6 sm:h-[860px] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2.25rem] sm:border sm:border-zinc-800/80 sm:shadow-2xl sm:shadow-black">
-        {/* Ambient glow. While a position is open this tracks whether you're
+        {/* Ambient glow. While a position is live this tracks whether you're
             *winning*, not which way you bet — a DOWN bet that's printing should
-            feel green, not red. */}
+            feel green, not red. Stays neutral while a bet is merely queued. */}
         <div
           aria-hidden
           className={`pointer-events-none absolute -top-32 left-1/2 h-64 w-[130%] -translate-x-1/2 rounded-full blur-3xl transition-colors duration-500 ${
-            round === "committed" && position
+            round === "committed" && position && !pending
               ? didWin(position, feed.price)
                 ? "bg-up/10"
                 : "bg-down/10"
@@ -163,7 +182,8 @@ export default function Home() {
             <PriceWidget
               asset={asset}
               feed={feed}
-              entryPrice={position?.entryPrice}
+              strike={shownStrike}
+              settleAt={shownSettleAt}
             />
             <CountdownBar window={eventWindow} />
           </div>
@@ -174,13 +194,17 @@ export default function Home() {
                 asset={asset}
                 position={position}
                 currentPrice={feed.price}
+                pending={pending}
+                secondsLeft={eventWindow.secondsLeft}
               />
             ) : (
               <>
                 <PoolSentiment pool={pool} />
                 <PredictButtons
                   pool={pool}
-                  disabled={eventWindow.locked}
+                  locked={eventWindow.locked}
+                  ready={eventWindow.ready}
+                  secondsLeft={eventWindow.secondsLeft}
                   onPredict={handlePredict}
                 />
               </>

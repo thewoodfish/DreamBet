@@ -14,8 +14,15 @@ export interface Position {
   direction: Direction;
   /** USDso staked. */
   stake: number;
-  /** Price at the moment of commit — drawn on the chart as the entry line. */
+  /**
+   * The window's shared strike — the line this position settles against. Every
+   * player in the window has the same one, so UP and DOWN are true opposites.
+   */
+  strike: number;
+  /** Price when the user tapped. Shown for context; it does not decide the bet. */
   entryPrice: number;
+  /** Index of the event window this position settles at the close of. */
+  targetWindow: number;
   /** Parimutuel multiplier locked in at commit time. */
   payoutMultiplier: number;
 }
@@ -42,11 +49,11 @@ export interface UserStats {
   rounds: number;
 }
 
-/** True when a position finished on the right side of the move. */
+/** True when a position finished on the right side of the window's strike. */
 export function didWin(position: Position, settlePrice: number): boolean {
   return position.direction === "up"
-    ? settlePrice > position.entryPrice
-    : settlePrice < position.entryPrice;
+    ? settlePrice > position.strike
+    : settlePrice < position.strike;
 }
 
 /** Net USDso for a settled position: winnings above the stake, or the stake lost. */

@@ -5,18 +5,26 @@ import { Sparkline } from "@/components/Sparkline";
 import { AssetIcon } from "@/components/icons/AssetIcons";
 import type { Asset } from "@/lib/assets";
 import type { PriceFeed } from "@/hooks/usePriceFeed";
-import { formatPercent, formatPrice } from "@/lib/format";
+import { formatClockTime, formatPercent, formatPrice } from "@/lib/format";
 
 interface PriceWidgetProps {
   asset: Asset;
   feed: PriceFeed;
-  /** Set while the user holds a position, to mark their entry on the chart. */
-  entryPrice?: number;
+  /** The line the window settles against, drawn on the chart and spelled out. */
+  strike: number;
+  /** Null until the client clock is ready — the server can't know the timezone. */
+  settleAt: number | null;
 }
 
-export function PriceWidget({ asset, feed, entryPrice }: PriceWidgetProps) {
+export function PriceWidget({
+  asset,
+  feed,
+  strike,
+  settleAt,
+}: PriceWidgetProps) {
   const positive = feed.changePct >= 0;
   const Trend = positive ? TrendingUp : TrendingDown;
+  const above = feed.price > strike;
 
   return (
     <section className="relative mx-5 flex min-h-[200px] flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-800/80 bg-zinc-900/50 shadow-card">
@@ -60,17 +68,38 @@ export function PriceWidget({ asset, feed, entryPrice }: PriceWidgetProps) {
         <Sparkline
           points={feed.history}
           positive={positive}
-          entryPrice={entryPrice}
+          strikePrice={strike}
         />
       </div>
 
-      <div className="flex items-center justify-between px-5 pb-3 pt-1">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">
-          Last 1H
+      {/* The bet, in words. Everyone in the window shares this line, so this is
+          the sentence that has to land before anyone taps UP or DOWN. */}
+      <div className="flex items-center justify-between gap-3 border-t border-zinc-800/80 px-5 py-2.5">
+        <span className="min-w-0">
+          <span className="block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+            Strike
+          </span>
+          <span className="tnum block text-[14px] font-semibold text-zinc-200">
+            {formatPrice(strike, asset.decimals)}
+          </span>
         </span>
-        <span className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-600">
-          <span className="h-1.5 w-1.5 animate-pulse-ring rounded-full bg-up" />
-          Live
+
+        <span className="flex flex-col items-end gap-1">
+          <span
+            className={`tnum flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              above ? "bg-up/10 text-up-soft" : "bg-down/10 text-down-soft"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 animate-pulse-ring rounded-full bg-current" />
+            {above ? "UP winning" : "DOWN winning"}
+          </span>
+          {settleAt !== null ? (
+            <span className="text-[10px] font-medium text-zinc-600">
+              settles {formatClockTime(settleAt)}
+            </span>
+          ) : (
+            <span className="h-3 w-20 animate-pulse rounded bg-zinc-800" />
+          )}
         </span>
       </div>
     </section>
