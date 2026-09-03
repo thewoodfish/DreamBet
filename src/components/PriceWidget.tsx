@@ -63,8 +63,10 @@ export function PriceWidget({
         </span>
       </div>
 
-      {/* Absorbs the slack on taller phones so the card never floats. */}
-      <div className="mt-2 min-h-[88px] w-full flex-1">
+      {/* Absorbs the slack on taller phones so the card never floats. Inset to
+          the same px-5 as the header and footer, so the trend line starts and
+          ends on the same vertical rule as the price and the strike. */}
+      <div className="mt-2 min-h-[88px] w-full flex-1 px-5">
         <Sparkline
           points={feed.history}
           positive={positive}
