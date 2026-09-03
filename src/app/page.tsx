@@ -174,18 +174,21 @@ export default function Home() {
               setSheetOpen(true);
             }}
           />
+          {/* Sits between the identity block and the trading half, outside the
+              scroll flow: urgency drives the tap, so the clock can never be
+              what scrolls out of view. */}
+          <CountdownBar window={eventWindow} />
           <AssetSelector selected={symbol} onSelect={handleSelectAsset} />
 
           {/* The price card flexes to absorb slack, so the layout stays tight
               from an iPhone SE up to a Pro Max without dead space. */}
-          <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto py-3">
+          <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto py-3">
             <PriceWidget
               asset={asset}
               feed={feed}
               strike={shownStrike}
               settleAt={shownSettleAt}
             />
-            <CountdownBar window={eventWindow} />
           </div>
 
           <div className="space-y-3 pt-1">

@@ -20,7 +20,7 @@ export function StatsStrip({
   onOpenLeaderboard,
 }: StatsStripProps) {
   return (
-    <div className="mx-5 flex items-center gap-1">
+    <div className="mx-5 mt-1 flex items-center gap-1">
       <button
         type="button"
         onClick={onOpenRecord}
