@@ -1,10 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import type { PoolSnapshot } from "@/lib/assets";
 import type { Direction } from "@/lib/round";
 import { formatDuration } from "@/lib/format";
+
+/** Pre-scaled from the 1024×1536 source renders; dimensions are the file's. */
+const ARROW = {
+  up: { src: "/arrow-up.webp", width: 159, height: 256 },
+  down: { src: "/arrow-down.webp", width: 158, height: 256 },
+} as const;
 
 interface PredictButtonsProps {
   pool: PoolSnapshot;
@@ -60,6 +67,12 @@ export function PredictButtons({
   );
 }
 
+/**
+ * The arrow renders carry their own colour *and* their own bloom, so the button
+ * underneath stays dark: a green glow on a green fill has nothing to bloom
+ * against and the arrow disappears into it. The surface keeps its UP/DOWN
+ * identity through a tinted wash, the ring, and the halo instead of a fill.
+ */
 function PredictButton({
   direction,
   payout,
@@ -72,7 +85,7 @@ function PredictButton({
   onPredict: (direction: Direction) => void;
 }) {
   const isUp = direction === "up";
-  const Icon = isUp ? ArrowUpRight : ArrowDownRight;
+  const arrow = ARROW[direction];
 
   return (
     <motion.button
@@ -82,21 +95,40 @@ function PredictButton({
       whileTap={disabled ? undefined : { scale: 0.955 }}
       animate={{ opacity: disabled ? 0.4 : 1 }}
       transition={{ type: "spring", stiffness: 600, damping: 30 }}
-      className={`group relative isolate flex h-[88px] flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl font-semibold outline-none ${
-        isUp
-          ? "bg-gradient-to-b from-up to-emerald-600 text-emerald-950 shadow-glow-up"
-          : "bg-gradient-to-b from-down to-rose-600 text-rose-950 shadow-glow-down"
+      className={`group relative isolate flex h-[88px] flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl bg-zinc-900 font-semibold outline-none ${
+        isUp ? "shadow-glow-up" : "shadow-glow-down"
       }`}
     >
+      {/* Tinted wash — the colour the fill used to carry, dialled down far
+          enough that the arrow still has somewhere to glow. */}
+      <span
+        className={`pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b to-transparent ${
+          isUp ? "from-up/[0.16]" : "from-down/[0.16]"
+        }`}
+      />
       {/* Brightens under the finger for a tactile, "charged" feel. */}
-      <span className="pointer-events-none absolute inset-0 -z-10 bg-white/0 transition-colors group-active:bg-white/10" />
+      <span className="pointer-events-none absolute inset-0 -z-10 bg-white/0 transition-colors group-active:bg-white/[0.07]" />
 
-      <span className="flex items-center gap-1 text-[19px] tracking-tight">
-        <Icon className="h-5 w-5" strokeWidth={3} />
-        {isUp ? "Predict UP" : "Predict DOWN"}
-      </span>
-      <span className="tnum text-[12px] font-semibold opacity-70">
-        {payout.toFixed(2)}× payout
+      <Image
+        src={arrow.src}
+        alt=""
+        width={arrow.width}
+        height={arrow.height}
+        priority
+        className="h-10 w-auto"
+      />
+
+      <span className="flex flex-col items-center gap-0.5">
+        <span className="text-[15px] tracking-tight text-white">
+          {isUp ? "Predict UP" : "Predict DOWN"}
+        </span>
+        <span
+          className={`tnum text-[11px] font-semibold ${
+            isUp ? "text-up-soft/80" : "text-down-soft/80"
+          }`}
+        >
+          {payout.toFixed(2)}× payout
+        </span>
       </span>
     </motion.button>
   );
