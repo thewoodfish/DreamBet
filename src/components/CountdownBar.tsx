@@ -2,11 +2,10 @@
 
 import { Lock, Timer } from "lucide-react";
 import type { EventWindow } from "@/hooks/useEventWindow";
-import { WINDOW_MINUTES } from "@/hooks/useEventWindow";
 import { formatDuration } from "@/lib/format";
 
-/** One tick per minute of the window — the bar reads as time, not as a ratio. */
-const SEGMENTS = WINDOW_MINUTES;
+/** Fallback tick count before a window is known, so the bar has a resting shape. */
+const DEFAULT_SEGMENTS = 15;
 
 /** Colour ramps from calm to urgent as the window drains. */
 function urgency(secondsLeft: number, locked: boolean) {
@@ -45,9 +44,15 @@ function urgency(secondsLeft: number, locked: boolean) {
  * last seconds still feel live.
  */
 export function CountdownBar({ window }: { window: EventWindow }) {
-  const { ready, secondsLeft, progress, locked } = window;
+  const { ready, secondsLeft, progress, locked, windowSeconds } = window;
   const tone = urgency(secondsLeft, locked);
-  const remaining = (1 - progress) * SEGMENTS;
+  // One tick per minute of the contract's own window, so the bar reads as time
+  // rather than as a ratio — and re-reads correctly if the venue's cadence
+  // ever changes under us.
+  const segments = ready
+    ? Math.max(Math.round(windowSeconds / 60), 1)
+    : DEFAULT_SEGMENTS;
+  const remaining = (1 - progress) * segments;
 
   return (
     <section className="relative mt-3 border-y border-zinc-800/80 bg-zinc-900/30">
@@ -65,7 +70,7 @@ export function CountdownBar({ window }: { window: EventWindow }) {
             ) : (
               <Timer className="h-3 w-3" strokeWidth={2.6} />
             )}
-            {WINDOW_MINUTES}m Event Window
+            {segments}m Event Window
           </span>
 
           {ready ? (
@@ -90,7 +95,7 @@ export function CountdownBar({ window }: { window: EventWindow }) {
                 {formatDuration(secondsLeft)}
               </span>
               <span className="text-[11px] font-medium text-zinc-500">
-                {locked ? "until the next round opens" : "left to predict"}
+                {locked ? "settling now" : "left to predict"}
               </span>
             </>
           ) : (
@@ -102,7 +107,7 @@ export function CountdownBar({ window }: { window: EventWindow }) {
       {/* The fuse. Sits flush on the band's edge so it reads as the boundary
           between "time to decide" and everything below it. */}
       <div className="relative flex gap-[3px] px-5 pb-2">
-        {Array.from({ length: SEGMENTS }, (_, i) => {
+        {Array.from({ length: segments }, (_, i) => {
           // Segments drain right to left; only the leading one is partial.
           const fill = ready ? Math.min(Math.max(remaining - i, 0), 1) : 1;
           return (

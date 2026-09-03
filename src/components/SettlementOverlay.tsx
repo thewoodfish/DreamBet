@@ -3,14 +3,17 @@
 import { motion } from "framer-motion";
 import { Flame, Send } from "lucide-react";
 import type { Asset } from "@/lib/assets";
+import { NETWORK } from "@/lib/dreamdex/config";
 import type { Position } from "@/lib/round";
-import { didWin, netResult } from "@/lib/round";
+import { netResult } from "@/lib/round";
+import type { Settlement } from "@/hooks/useSettlement";
 import { formatPrice, formatUsd } from "@/lib/format";
 
 interface SettlementOverlayProps {
   asset: Asset;
   position: Position;
-  settlePrice: number;
+  /** What the contract decided — never a locally computed result. */
+  settlement: Settlement;
   streak: number;
   onShare: () => void;
   onNextRound: () => void;
@@ -24,13 +27,14 @@ interface SettlementOverlayProps {
 export function SettlementOverlay({
   asset,
   position,
-  settlePrice,
+  settlement,
   streak,
   onShare,
   onNextRound,
 }: SettlementOverlayProps) {
-  const won = didWin(position, settlePrice);
-  const net = netResult(position, settlePrice);
+  const { winner, price, voided } = settlement;
+  const won = winner === position.direction;
+  const net = netResult(position, winner);
 
   return (
     <motion.div
@@ -59,10 +63,12 @@ export function SettlementOverlay({
       >
         <p
           className={`text-[13px] font-bold uppercase tracking-[0.2em] ${
-            won ? "text-up-soft" : "text-down-soft"
+            voided ? "text-zinc-400" : won ? "text-up-soft" : "text-down-soft"
           }`}
         >
-          {won ? "You won" : "Missed it"}
+          {/* A void is not a loss: the oracle declined to answer and the stake
+              comes back, so it must never be dressed up as one. */}
+          {voided ? "Round voided" : won ? "You won" : "Missed it"}
         </p>
 
         <p
@@ -73,21 +79,33 @@ export function SettlementOverlay({
           {net >= 0 ? "+" : "−"}
           {formatUsd(Math.abs(net))}
         </p>
-        <p className="mt-1 text-[12px] font-medium text-zinc-500">USDso</p>
+        <p className="mt-1 text-[12px] font-medium text-zinc-500">
+          {NETWORK.collateral.symbol}
+        </p>
 
         <p className="mt-5 text-[12px] font-medium text-zinc-500">
-          {asset.pair} settled at{" "}
-          <span className="tnum font-semibold text-zinc-300">
-            {formatPrice(settlePrice, asset.decimals)}
-          </span>
-          <br />
+          {voided ? (
+            <>
+              {asset.pair} returned your stake &mdash; the oracle posted no
+              answer for this window
+              <br />
+            </>
+          ) : (
+            <>
+              {asset.pair} settled at{" "}
+              <span className="tnum font-semibold text-zinc-300">
+                {price === null ? "—" : formatPrice(price, asset.decimals)}
+              </span>
+              <br />
+            </>
+          )}
           you called{" "}
           <span
             className={`font-bold ${won ? "text-up-soft" : "text-down-soft"}`}
           >
             {position.direction === "up" ? "UP" : "DOWN"}
           </span>{" "}
-          against a strike of{" "}
+          against an opening price of{" "}
           <span className="tnum font-semibold text-zinc-300">
             {formatPrice(position.strike, asset.decimals)}
           </span>
@@ -99,13 +117,13 @@ export function SettlementOverlay({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.32 }}
           className={`mt-6 flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-bold ${
-            won
+            won && !voided
               ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
               : "border-zinc-800 bg-zinc-900 text-zinc-500"
           }`}
         >
           <Flame className="h-4 w-4" strokeWidth={2.5} />
-          {won ? `${streak} in a row` : "Streak reset"}
+          {voided ? "Streak held" : won ? `${streak} in a row` : "Streak reset"}
         </motion.div>
       </motion.div>
 
@@ -122,7 +140,7 @@ export function SettlementOverlay({
           className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-violet-500 to-indigo-600 text-[16px] font-bold text-white shadow-lg shadow-indigo-950/60"
         >
           <Send className="h-4.5 w-4.5" strokeWidth={2.5} />
-          {won ? "Brag in the group" : "Challenge the group"}
+          {won && !voided ? "Brag in the group" : "Challenge the group"}
         </motion.button>
 
         <button

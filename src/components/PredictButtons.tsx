@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Loader2, Lock } from "lucide-react";
 import type { MarketQuote } from "@/lib/dreamdex/market";
 import type { Direction } from "@/lib/round";
-import { formatDuration } from "@/lib/format";
 
 /** Pre-scaled from the 1024×1536 source renders; dimensions are the file's. */
 const ARROW = {
@@ -16,49 +15,55 @@ const ARROW = {
 interface PredictButtonsProps {
   /** Live odds off the dreamDEX book. */
   quote: MarketQuote;
-  /** No open window for this asset — there is nothing to bet into. */
-  noMarket: boolean;
-  /** The current window stopped accepting bets; these now target the next one. */
-  locked: boolean;
-  /** False until the client clock ticks — we don't know which window we're in yet. */
-  ready: boolean;
-  /** Seconds until the current window closes, i.e. until the next one opens. */
-  secondsLeft: number;
+  /** A window is open and has a strike, so a bet can actually be placed. */
+  bettable: boolean;
+  /** Still finding the window — say nothing rather than "closed". */
+  loading: boolean;
+  /** Window is open but the oracle has yet to post the line it settles against. */
+  awaitingStrike: boolean;
   onPredict: (direction: Direction) => void;
 }
 
 export function PredictButtons({
   quote,
-  noMarket,
-  locked,
-  ready,
-  secondsLeft,
+  bettable,
+  loading,
+  awaitingStrike,
   onPredict,
 }: PredictButtonsProps) {
   return (
     <div className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
-      {/* Windows roll continuously, so this is a gap of seconds between one
-          closing and the next opening — said plainly rather than left as two
-          dead buttons with no explanation. */}
-      {noMarket && (
+      {/* Every reason a bet can't be placed right now is stated, rather than
+          left as two dead buttons with no explanation. */}
+      {loading && (
         <Notice>
           <Loader2
             className="h-3 w-3 shrink-0 animate-spin text-zinc-500"
             strokeWidth={2.4}
           />
-          Waiting for the next window to open
+          Finding the live window
         </Notice>
       )}
 
-      {/* A locked window used to dead-end the whole screen. Betting never stops
-          now — it rolls onto the next window, and this line says so. */}
-      {!noMarket && locked && (
+      {/* The oracle posts the opening price a moment after a window opens, and
+          that print is the line the bet settles against. Betting before it
+          lands would be betting against a number nobody has seen. */}
+      {!loading && awaitingStrike && (
+        <Notice>
+          <Loader2
+            className="h-3 w-3 shrink-0 animate-spin text-zinc-500"
+            strokeWidth={2.4}
+          />
+          Waiting for this window&rsquo;s opening price
+        </Notice>
+      )}
+
+      {/* Windows roll continuously, so this is a gap of seconds between one
+          closing and the next opening. */}
+      {!loading && !awaitingStrike && !bettable && (
         <Notice>
           <Lock className="h-3 w-3 shrink-0 text-zinc-500" strokeWidth={2.4} />
-          This round is settling — you&rsquo;re betting the next one, opens in{" "}
-          <span className="tnum font-mono font-semibold text-zinc-200">
-            {formatDuration(secondsLeft)}
-          </span>
+          This round is closing — the next window opens shortly
         </Notice>
       )}
 
@@ -67,14 +72,14 @@ export function PredictButtons({
           direction="up"
           payout={quote.payoutUp}
           indicative={quote.isIndicative}
-          disabled={!ready || noMarket}
+          disabled={!bettable}
           onPredict={onPredict}
         />
         <PredictButton
           direction="down"
           payout={quote.payoutDown}
           indicative={quote.isIndicative}
-          disabled={!ready || noMarket}
+          disabled={!bettable}
           onPredict={onPredict}
         />
       </div>

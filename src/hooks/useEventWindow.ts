@@ -1,43 +1,47 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-/** dreamDEX event contracts settle on a fixed cadence. */
-export const WINDOW_MINUTES = 15;
-export const WINDOW_MS = WINDOW_MINUTES * 60 * 1000;
-
-/** Predictions lock shortly before settlement. */
-const LOCK_SECONDS = 30;
-
-export interface EventWindow {
-  /** False until the first client tick, so the server never renders a clock. */
-  ready: boolean;
-  secondsLeft: number;
-  /** 0 → window just opened, 1 → about to settle. */
-  progress: number;
-  /**
-   * Within the final seconds the current window stops accepting positions.
-   * Bets don't stop — they retarget to the next window (see `bettableWindow`).
-   */
-  locked: boolean;
-  /** Index of the current wall-clock window. Changes = the previous one settled. */
-  windowIndex: number;
-  /** Window a new position would land in: the next one once we're locked. */
-  bettableWindow: number;
-  /** Wall-clock ms at which `bettableWindow` closes and settles. */
-  bettableSettleAt: number;
-}
-
-/** Wall-clock ms at which the given window index closes. */
-export function windowSettleAt(windowIndex: number): number {
-  return (windowIndex + 1) * WINDOW_MS;
-}
+import type { DreamdexMarket } from "@/lib/dreamdex/market";
 
 /**
- * Countdown to the end of the current wall-clock-aligned event window, so every
- * player in a Telegram group sees the same timer without any shared state.
+ * A window stops being worth offering shortly before it expires: a tap that
+ * lands after the book closes is a bet the user never got to make. Matches the
+ * cutoff `pickTradableMarket` applies when choosing the window.
  */
-export function useEventWindow(): EventWindow {
+const LOCK_SECONDS = 5;
+
+export interface EventWindow {
+  /** False until a market is loaded and the client clock has ticked. */
+  ready: boolean;
+  /** Seconds until this window stops trading. */
+  secondsLeft: number;
+  /** 0 → window just opened, 1 → expiring. */
+  progress: number;
+  /** Inside the final seconds: the window no longer accepts orders. */
+  locked: boolean;
+  /** Window length in seconds, as the contract defines it. */
+  windowSeconds: number;
+  /** Wall-clock ms the window expires at, or null before a market is known. */
+  expiresAt: number | null;
+}
+
+const IDLE: EventWindow = {
+  ready: false,
+  secondsLeft: 0,
+  progress: 0,
+  locked: false,
+  windowSeconds: 0,
+  expiresAt: null,
+};
+
+/**
+ * Countdown to the close of the event contract's own window.
+ *
+ * The timing is the contract's, not this app's: `tradingStart` and `expiry`
+ * come off the market, so every player in a Telegram group is watching the same
+ * clock as the venue rather than a wall-clock window that merely resembles it.
+ */
+export function useEventWindow(market: DreamdexMarket | null): EventWindow {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
@@ -46,32 +50,19 @@ export function useEventWindow(): EventWindow {
     return () => clearInterval(id);
   }, []);
 
-  if (now === null) {
-    return {
-      ready: false,
-      secondsLeft: 0,
-      progress: 0,
-      locked: false,
-      windowIndex: 0,
-      bettableWindow: 0,
-      bettableSettleAt: 0,
-    };
-  }
+  if (now === null || market === null) return IDLE;
 
-  const elapsed = now % WINDOW_MS;
-  const msLeft = WINDOW_MS - elapsed;
-  const secondsLeft = msLeft / 1000;
-  const windowIndex = Math.floor(now / WINDOW_MS);
-  const locked = secondsLeft <= LOCK_SECONDS;
-  const bettableWindow = locked ? windowIndex + 1 : windowIndex;
+  const nowSec = now / 1000;
+  const secondsLeft = Math.max(market.expiry - nowSec, 0);
+  const elapsed = nowSec - market.tradingStart;
+  const windowSeconds = market.windowSeconds || 1;
 
   return {
     ready: true,
     secondsLeft,
-    progress: elapsed / WINDOW_MS,
-    locked,
-    windowIndex,
-    bettableWindow,
-    bettableSettleAt: windowSettleAt(bettableWindow),
+    progress: Math.min(Math.max(elapsed / windowSeconds, 0), 1),
+    locked: secondsLeft <= LOCK_SECONDS,
+    windowSeconds: market.windowSeconds,
+    expiresAt: market.expiry * 1000,
   };
 }

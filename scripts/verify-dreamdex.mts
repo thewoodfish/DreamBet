@@ -1,7 +1,8 @@
 import { SomniaMarkets } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
-import { toDreamdexMarket, quoteFromProbability, clampProbability, isTrading, pickTradableMarket } from "../src/lib/dreamdex/market.ts";
-import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADABLE_ASSETS } from "../src/lib/dreamdex/config.ts";
+import { toDreamdexMarket, quoteFromProbability, clampProbability, isTrading, pickTradableMarket, marketBoundary, resolvedDirection } from "../src/lib/dreamdex/market.ts";
+import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADABLE_ASSETS, PRICE_SERIES_CADENCE_SECONDS } from "../src/lib/dreamdex/config.ts";
+import { netResult } from "../src/lib/round.ts";
 
 let fail = 0;
 const ok = (label: string, cond: boolean, extra = "") => {
@@ -110,6 +111,76 @@ ok("a window with seconds left is skipped, not offered", (() => {
   const expiring = mkts.map((m) => ({ ...m, expiry: Math.floor(NOW/1000) + 2 }));
   return pickTradableMarket(expiring, NOW) === null;
 })());
+
+// --- the boundary: the line a 15m window actually settles against ---
+for (const asset of TRADABLE_ASSETS) {
+  const rows = await ex.client.listLiveBinaryMarkets({ asset, intervalSec: APP_CADENCE_SECONDS, limit: 5 });
+  const picked = rows.find((r) => isTrading(toDreamdexMarket(r), NOW));
+  if (!picked) { console.log(`   ${asset}: no live window to read a boundary from`); continue; }
+
+  const opening = await ex.client.getOpeningPrices([picked.marketId]);
+  const boundary = marketBoundary(picked, opening);
+  ok(`${asset}: reference window exposes a posted opening price`,
+     picked.mode !== "reference" || boundary !== null, `boundary=${boundary}`);
+
+  // The boundary must be on the same scale as the price the chart plots, or
+  // the strike line lands somewhere meaningless.
+  const series = await ex.client.listPastBinaryMarkets({ asset, intervalSec: PRICE_SERIES_CADENCE_SECONDS, limit: 3 });
+  const spot = Number(series[0]?.strike ?? 0) / STRIKE_SCALE;
+  if (boundary !== null && spot > 0) {
+    ok(`${asset}: boundary and chart price agree to within 5%`,
+       Math.abs(boundary - spot) / spot < 0.05, `${boundary} vs ${spot}`);
+  }
+}
+
+// --- the price series: real oracle prints, one a minute ---
+for (const asset of TRADABLE_ASSETS) {
+  const [past, live] = await Promise.all([
+    ex.client.listPastBinaryMarkets({ asset, intervalSec: PRICE_SERIES_CADENCE_SECONDS, limit: 60 }),
+    ex.client.listLiveBinaryMarkets({ asset, intervalSec: PRICE_SERIES_CADENCE_SECONDS, limit: 3 }),
+  ]);
+  const pts = [...past, ...live]
+    .map((m) => ({ t: Number(m.tradingStart), p: Number(m.strike) / STRIKE_SCALE }))
+    .filter((x) => x.p > 0)
+    .sort((a, b) => a.t - b.t);
+  const gaps = [...new Set(pts.slice(1).map((x, i) => x.t - pts[i].t))];
+
+  ok(`${asset}: the 1m series yields an hour of prints`, pts.length >= 50, `${pts.length} points`);
+  ok(`${asset}: prints land exactly one minute apart`,
+     gaps.every((g) => g === PRICE_SERIES_CADENCE_SECONDS), `gaps: ${gaps.join(",")}`);
+  ok(`${asset}: the freshest print is under two minutes old`,
+     NOW/1000 - pts[pts.length-1].t < 120, `${Math.round(NOW/1000 - pts[pts.length-1].t)}s`);
+}
+
+// --- the verdict: read off the contract, and it matches the prices ---
+const settled = await ex.client.listPastBinaryMarkets({ asset: "BTC", intervalSec: APP_CADENCE_SECONDS, limit: 6 });
+const sIds = settled.map((m) => m.marketId);
+const [opens, closes] = await Promise.all([
+  ex.client.getOpeningPrices(sIds),
+  ex.client.getResolutionPrices(sIds),
+]);
+let checkedVerdicts = 0;
+for (const raw of settled) {
+  const m = toDreamdexMarket(raw);
+  const dir = resolvedDirection(m);
+  const o = opens[m.marketId.toLowerCase()];
+  const c = closes[m.marketId.toLowerCase()];
+  if (dir === null || o === null || c === null || o === undefined || c === undefined) continue;
+  checkedVerdicts++;
+  // "closes at or above its opening price" — outcome 0 (YES) must mean UP.
+  ok(`settled window: contract verdict matches open vs close`,
+     dir === (Number(c) >= Number(o) ? "up" : "down"),
+     `${dir} open=${o} close=${c} winningOutcome=${m.winningOutcome}`);
+}
+ok("at least one settled window was cross-checked", checkedVerdicts > 0);
+
+// --- payouts follow the verdict, and a void returns the stake ---
+const pos = { direction: "up" as const, stake: 50, marketId: "0x0" as `0x${string}`,
+              strike: 100, entryPrice: 100, payoutMultiplier: 1.85 };
+ok("a winning position pays the stake times the multiplier, less the stake",
+   Math.abs(netResult(pos, "up") - 50 * 0.85) < 1e-9, `${netResult(pos, "up")}`);
+ok("a losing position loses exactly the stake", netResult(pos, "down") === -50);
+ok("a void is flat, not a loss", netResult(pos, null) === 0);
 
 console.log(fail === 0 ? "\nALL PASS" : `\n${fail} FAILURE(S)`);
 process.exit(fail === 0 ? 0 : 1);

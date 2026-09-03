@@ -3,18 +3,20 @@
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, Clock } from "lucide-react";
 import type { Asset } from "@/lib/assets";
+import { NETWORK } from "@/lib/dreamdex/config";
 import type { Position } from "@/lib/round";
-import { didWin } from "@/lib/round";
+import { isAhead } from "@/lib/round";
 import { formatDuration, formatPrice, formatUsd } from "@/lib/format";
 
 interface PositionCardProps {
   asset: Asset;
   position: Position;
-  currentPrice: number;
-  /** True while the position is queued for a window that hasn't opened yet. */
-  pending: boolean;
-  /** Seconds until the position's window opens (pending) or closes (live). */
+  /** Null before the first oracle print lands. */
+  currentPrice: number | null;
+  /** Seconds until the position's window closes. */
   secondsLeft: number;
+  /** The window has closed and the contract is being asked for its verdict. */
+  settling: boolean;
 }
 
 /**
@@ -26,12 +28,14 @@ export function PositionCard({
   asset,
   position,
   currentPrice,
-  pending,
   secondsLeft,
+  settling,
 }: PositionCardProps) {
   const isUp = position.direction === "up";
   const Icon = isUp ? ArrowUpRight : ArrowDownRight;
-  const winning = didWin(position, currentPrice);
+  // No price yet means no verdict to give — not a losing one.
+  const winning = currentPrice !== null && isAhead(position, currentPrice);
+  const known = currentPrice !== null && !settling;
   const toWin = position.stake * position.payoutMultiplier;
 
   return (
@@ -41,11 +45,7 @@ export function PositionCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={`mx-5 overflow-hidden rounded-2xl border bg-zinc-900/60 shadow-card ${
-        pending
-          ? "border-zinc-700"
-          : winning
-            ? "border-up/40"
-            : "border-down/40"
+        !known ? "border-zinc-700" : winning ? "border-up/40" : "border-down/40"
       }`}
     >
       <div className="flex items-center justify-between px-4 pt-3.5">
@@ -60,16 +60,19 @@ export function PositionCard({
           </span>
           <span className="tnum text-[15px] font-semibold">
             {formatUsd(position.stake)}{" "}
-            <span className="text-[11px] font-medium text-zinc-500">USDso</span>
+            <span className="text-[11px] font-medium text-zinc-500">
+              {NETWORK.collateral.symbol}
+            </span>
           </span>
         </span>
 
-        {/* Live verdict — the reason to keep watching. Withheld while the
-            position is queued, because there is no verdict yet to give. */}
-        {pending ? (
+        {/* Live verdict — the reason to keep watching. Withheld once the window
+            has closed, because from then on the answer is the contract's and
+            guessing at it here could contradict what actually paid out. */}
+        {!known ? (
           <span className="flex items-center gap-1.5 text-[12px] font-bold text-zinc-400">
             <Clock className="h-3.5 w-3.5" strokeWidth={2.6} />
-            NEXT ROUND
+            {settling ? "SETTLING" : "WAITING"}
           </span>
         ) : (
           <span
@@ -92,9 +95,11 @@ export function PositionCard({
           label="Strike"
           value={formatPrice(position.strike, asset.decimals)}
         />
-        {pending ? (
+        {currentPrice === null ? (
+          <Stat label="Now" value="—" tone="text-zinc-500" />
+        ) : settling ? (
           <Stat
-            label="Starts in"
+            label="Closes in"
             value={formatDuration(secondsLeft)}
             tone="text-zinc-300"
           />
@@ -104,7 +109,7 @@ export function PositionCard({
         <Stat
           label="To win"
           value={formatUsd(toWin)}
-          tone={!pending && winning ? "text-up-soft" : "text-zinc-400"}
+          tone={known && winning ? "text-up-soft" : "text-zinc-400"}
         />
       </div>
     </motion.div>

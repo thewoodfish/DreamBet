@@ -12,17 +12,18 @@ export type RoundState = "open" | "committed" | "settled";
 
 export interface Position {
   direction: Direction;
-  /** USDso staked. */
+  /** Collateral staked. */
   stake: number;
+  /** The event contract this position settles on. */
+  marketId: `0x${string}`;
   /**
-   * The window's shared strike — the line this position settles against. Every
-   * player in the window has the same one, so UP and DOWN are true opposites.
+   * The window's shared strike — the line this position settles against, taken
+   * from the contract. Every player in the window has the same one, so UP and
+   * DOWN are true opposites.
    */
   strike: number;
   /** Price when the user tapped. Shown for context; it does not decide the bet. */
   entryPrice: number;
-  /** Index of the event window this position settles at the close of. */
-  targetWindow: number;
   /** Payout multiplier the market was quoting when the user committed. */
   payoutMultiplier: number;
 }
@@ -33,7 +34,7 @@ export interface HistoryEntry {
   direction: Direction;
   stake: number;
   won: boolean;
-  /** Net USDso: positive on a win, negative on a loss. */
+  /** Net collateral: positive on a win, negative on a loss. */
   net: number;
   /** Pre-formatted relative label — keeps the list free of clock-dependent
       rendering, which would otherwise differ between server and client. */
@@ -49,16 +50,28 @@ export interface UserStats {
   rounds: number;
 }
 
-/** True when a position finished on the right side of the window's strike. */
-export function didWin(position: Position, settlePrice: number): boolean {
+/**
+ * Whether a position is *currently* on the right side of its strike. This is the
+ * live "you're winning" read on a running window — a running commentary, not a
+ * verdict. The settled result comes from the contract (see `useSettlement`),
+ * never from this.
+ */
+export function isAhead(position: Position, currentPrice: number): boolean {
   return position.direction === "up"
-    ? settlePrice > position.strike
-    : settlePrice < position.strike;
+    ? currentPrice >= position.strike
+    : currentPrice < position.strike;
 }
 
-/** Net USDso for a settled position: winnings above the stake, or the stake lost. */
-export function netResult(position: Position, settlePrice: number): number {
-  return didWin(position, settlePrice)
+/**
+ * Net collateral for a settled position: winnings above the stake, or the stake
+ * lost. A void returns the stake, so the result is zero either way.
+ */
+export function netResult(
+  position: Position,
+  winner: Direction | null
+): number {
+  if (winner === null) return 0;
+  return winner === position.direction
     ? position.stake * (position.payoutMultiplier - 1)
     : -position.stake;
 }

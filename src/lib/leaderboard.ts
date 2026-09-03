@@ -9,7 +9,7 @@ export interface LeaderboardEntry {
   name: string;
   handle?: string;
   address: string;
-  /** Net USDso across the scoped period. */
+  /** Net collateral across the scoped period. */
   netPnl: number;
   /** 0–1. */
   winRate: number;

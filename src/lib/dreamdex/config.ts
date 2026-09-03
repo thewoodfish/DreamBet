@@ -82,6 +82,14 @@ export const WINDOW_SECONDS = [60, 300, 900, 3600, 14400, 86400] as const;
 export const APP_CADENCE_SECONDS = 900;
 
 /**
+ * The cadence the price chart is read from. Markets on the 1-minute series are
+ * created with a fixed strike, and that strike is the feed's spot at creation —
+ * so a run of them is the oracle's own 1-minute price history. See
+ * `oracle.ts`; nothing else about this series is used.
+ */
+export const PRICE_SERIES_CADENCE_SECONDS = 60;
+
+/**
  * Event contracts exist for these assets only. The mock feed also carried SOMI,
  * which has no binary market — it can stay as a price feed but must never be
  * offered as something to bet on.

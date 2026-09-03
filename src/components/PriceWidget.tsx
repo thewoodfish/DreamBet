@@ -10,9 +10,12 @@ import { formatClockTime, formatPercent, formatPrice } from "@/lib/format";
 interface PriceWidgetProps {
   asset: Asset;
   feed: PriceFeed;
-  /** The line the window settles against, drawn on the chart and spelled out. */
-  strike: number;
-  /** Null until the client clock is ready — the server can't know the timezone. */
+  /**
+   * The line the window settles against, drawn on the chart and spelled out.
+   * Null until the oracle posts the window's opening price.
+   */
+  strike: number | null;
+  /** Null until a window is known — the server can't know the timezone either. */
   settleAt: number | null;
 }
 
@@ -24,7 +27,10 @@ export function PriceWidget({
 }: PriceWidgetProps) {
   const positive = feed.changePct >= 0;
   const Trend = positive ? TrendingUp : TrendingDown;
-  const above = feed.price > strike;
+  // No price or no line means no side to be on. Rendering "DOWN winning" off a
+  // missing number would be a claim about money that nothing supports.
+  const above =
+    feed.price !== null && strike !== null ? feed.price >= strike : null;
 
   return (
     <section className="relative mx-5 flex min-h-[200px] flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-800/80 bg-zinc-900/50 shadow-card">
@@ -48,7 +54,11 @@ export function PriceWidget({
                     : "text-white"
               }`}
             >
-              {formatPrice(feed.price, asset.decimals)}
+              {feed.price === null ? (
+                <span className="inline-block h-7 w-40 animate-pulse rounded-lg bg-zinc-800 align-middle" />
+              ) : (
+                formatPrice(feed.price, asset.decimals)
+              )}
             </span>
           </div>
         </div>
@@ -67,11 +77,15 @@ export function PriceWidget({
           the same px-5 as the header and footer, so the trend line starts and
           ends on the same vertical rule as the price and the strike. */}
       <div className="mt-2 min-h-[88px] w-full flex-1 px-5">
-        <Sparkline
-          points={feed.history}
-          positive={positive}
-          strikePrice={strike}
-        />
+        {feed.history.length > 1 ? (
+          <Sparkline
+            points={feed.history}
+            positive={positive}
+            strikePrice={strike ?? undefined}
+          />
+        ) : (
+          <div className="h-full w-full animate-pulse rounded-xl bg-zinc-800/40" />
+        )}
       </div>
 
       {/* The bet, in words. Everyone in the window shares this line, so this is
@@ -82,18 +96,30 @@ export function PriceWidget({
             Strike
           </span>
           <span className="tnum block text-[14px] font-semibold text-zinc-200">
-            {formatPrice(strike, asset.decimals)}
+            {strike === null ? (
+              <span className="inline-block h-3.5 w-20 animate-pulse rounded bg-zinc-800 align-middle" />
+            ) : (
+              formatPrice(strike, asset.decimals)
+            )}
           </span>
         </span>
 
         <span className="flex flex-col items-end gap-1">
           <span
             className={`tnum flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-              above ? "bg-up/10 text-up-soft" : "bg-down/10 text-down-soft"
+              above === null
+                ? "bg-zinc-800 text-zinc-500"
+                : above
+                  ? "bg-up/10 text-up-soft"
+                  : "bg-down/10 text-down-soft"
             }`}
           >
             <span className="h-1.5 w-1.5 animate-pulse-ring rounded-full bg-current" />
-            {above ? "UP winning" : "DOWN winning"}
+            {above === null
+              ? "Awaiting line"
+              : above
+                ? "UP winning"
+                : "DOWN winning"}
           </span>
           {settleAt !== null ? (
             <span className="text-[10px] font-medium text-zinc-600">

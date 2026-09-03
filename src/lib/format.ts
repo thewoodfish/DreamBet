@@ -12,7 +12,7 @@ export function formatPercent(value: number): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-/** USDso amount, trimmed of trailing noise. */
+/** Collateral amount, trimmed of trailing noise. */
 export function formatUsd(value: number): string {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,

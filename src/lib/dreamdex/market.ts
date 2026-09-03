@@ -1,4 +1,4 @@
-import { binaryResolutionMode } from "@somnia-chain/markets-sdk";
+import { binaryResolutionMode, boundaryPrice } from "@somnia-chain/markets-sdk";
 import type { BinaryMarket, BinaryMarketStatus } from "@somnia-chain/markets-sdk";
 import { STRIKE_SCALE } from "./config";
 
@@ -178,4 +178,40 @@ export function pickTradableMarket(
         isTrading(m, nowMs) && secondsUntilExpiry(m, nowMs) >= minSecondsLeft
     ) ?? null
   );
+}
+
+/**
+ * The line the window settles against, whichever way this market establishes
+ * one. A fixed-strike market carries it directly; a reference market ("closes
+ * at or above its opening price") reaches it through the oracle answer its
+ * reference question was given, which is why the opening prices have to be
+ * fetched alongside the market itself.
+ *
+ * Null while a reference market's opening print has not been posted yet — a
+ * real state in the first moments of a window, and not one to paper over with
+ * a zero.
+ */
+export function marketBoundary(
+  market: BinaryMarket,
+  openingPrices: Record<string, string | null>
+): number | null {
+  const boundary = boundaryPrice(market, openingPrices);
+  if (!boundary || !boundary.posted) return null;
+
+  const value = Number(boundary.raw) / STRIKE_SCALE;
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * Which side the contract actually paid out, once it has resolved. The indexer
+ * derives this from a one-hot payout vector, so a void or partial resolution
+ * leaves it null rather than picking a winner — treat that as "no verdict",
+ * never as a loss.
+ */
+export function resolvedDirection(
+  market: Pick<DreamdexMarket, "winningOutcome" | "voided">
+): "up" | "down" | null {
+  if (market.voided || market.winningOutcome === null) return null;
+  // Outcome 0 is YES — "closes at or above" — which is the UP side.
+  return market.winningOutcome === 0 ? "up" : "down";
 }
