@@ -11,7 +11,7 @@ interface AssetSelectorProps {
 
 export function AssetSelector({ selected, onSelect }: AssetSelectorProps) {
   return (
-    <div className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1">
+    <div className="no-scrollbar mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1">
       {ASSETS.map((asset) => {
         const active = asset.symbol === selected;
         return (
