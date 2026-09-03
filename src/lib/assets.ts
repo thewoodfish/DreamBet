@@ -11,8 +11,6 @@ export interface Asset {
   volatility: number;
   /** Decimal places used when rendering the price. */
   decimals: number;
-  /** Tailwind gradient stops used for the asset's avatar chip. */
-  accent: string;
 }
 
 export const ASSETS: Asset[] = [
@@ -23,7 +21,6 @@ export const ASSETS: Asset[] = [
     basePrice: 68_420.5,
     volatility: 0.0009,
     decimals: 2,
-    accent: "from-amber-400 to-orange-600",
   },
   {
     symbol: "ETH",
@@ -32,7 +29,6 @@ export const ASSETS: Asset[] = [
     basePrice: 3_512.88,
     volatility: 0.0013,
     decimals: 2,
-    accent: "from-indigo-400 to-violet-600",
   },
   {
     symbol: "SOMI",
@@ -41,7 +37,6 @@ export const ASSETS: Asset[] = [
     basePrice: 1.284,
     volatility: 0.0031,
     decimals: 4,
-    accent: "from-sky-400 to-cyan-500",
   },
 ];
 

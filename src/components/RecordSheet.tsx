@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, Flame, X } from "lucide-react";
-import { ASSETS } from "@/lib/assets";
+import { AssetIcon } from "@/components/icons/AssetIcons";
 import { LeaderboardList } from "@/components/LeaderboardList";
 import type { HistoryEntry, UserStats } from "@/lib/round";
 import type { LeaderboardScope } from "@/lib/leaderboard";
@@ -149,16 +149,9 @@ function Tile({
 function HistoryRow({ entry }: { entry: HistoryEntry }) {
   const isUp = entry.direction === "up";
   const Icon = isUp ? ArrowUpRight : ArrowDownRight;
-  const accent =
-    ASSETS.find((a) => a.symbol === entry.symbol)?.accent ?? "from-zinc-600 to-zinc-700";
-
   return (
     <li className="flex items-center gap-3 border-b border-zinc-900 py-3 last:border-0">
-      <span
-        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br text-[10px] font-bold text-black/80 ${accent}`}
-      >
-        {entry.symbol.slice(0, 1)}
-      </span>
+      <AssetIcon symbol={entry.symbol} className="h-8 w-8" />
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[13px] font-semibold">

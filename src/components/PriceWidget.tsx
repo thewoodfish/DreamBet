@@ -2,6 +2,7 @@
 
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
+import { AssetIcon } from "@/components/icons/AssetIcons";
 import type { Asset } from "@/lib/assets";
 import type { PriceFeed } from "@/hooks/usePriceFeed";
 import { formatPercent, formatPrice } from "@/lib/format";
@@ -21,7 +22,8 @@ export function PriceWidget({ asset, feed, entryPrice }: PriceWidgetProps) {
     <section className="relative mx-5 flex min-h-[200px] flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-800/80 bg-zinc-900/50 shadow-card">
       <div className="flex items-start justify-between px-5 pt-4">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+            <AssetIcon symbol={asset.symbol} className="h-4 w-4" />
             {asset.name}
           </p>
 

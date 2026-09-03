@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ASSETS, type AssetSymbol } from "@/lib/assets";
+import { AssetIcon } from "@/components/icons/AssetIcons";
 
 interface AssetSelectorProps {
   selected: AssetSymbol;
@@ -30,13 +31,10 @@ export function AssetSelector({ selected, onSelect }: AssetSelectorProps) {
                 className="absolute inset-0 rounded-full border border-zinc-700 bg-zinc-800/90"
               />
             )}
-            <span
-              className={`relative z-10 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br text-[10px] font-bold text-black/80 ${asset.accent} ${
-                active ? "" : "opacity-50 saturate-50"
-              }`}
-            >
-              {asset.symbol.slice(0, 1)}
-            </span>
+            <AssetIcon
+              symbol={asset.symbol}
+              className={`relative z-10 h-6 w-6 ${active ? "" : "opacity-50 saturate-50"}`}
+            />
             <span className="relative z-10">{asset.pair}</span>
           </motion.button>
         );
