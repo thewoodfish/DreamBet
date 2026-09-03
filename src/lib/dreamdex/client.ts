@@ -1,4 +1,5 @@
 import { createPublicClient, http, type PublicClient } from "viem";
+import { SomniaMarkets } from "@somnia-chain/markets-sdk";
 import { NETWORK } from "./config";
 
 /**
@@ -14,4 +15,14 @@ export const publicClient: PublicClient = createPublicClient({
   chain: NETWORK.chain,
   transport: http(),
   batch: { multicall: true },
+});
+
+/**
+ * Indexer-backed read client for the event contracts themselves. The SDK wants
+ * a chain alongside the indexer URL even for pure reads, because the same
+ * instance is what places orders once a wallet is attached.
+ */
+export const exchange = new SomniaMarkets({
+  indexerUrl: NETWORK.indexerUrl,
+  chain: NETWORK.chain,
 });

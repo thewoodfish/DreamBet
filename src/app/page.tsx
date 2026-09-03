@@ -6,7 +6,7 @@ import { AssetSelector } from "@/components/AssetSelector";
 import { CountdownBar } from "@/components/CountdownBar";
 import { DevStateSwitcher } from "@/components/DevStateSwitcher";
 import { RecordSheet, type RecordTab } from "@/components/RecordSheet";
-import { PoolSentiment } from "@/components/PoolSentiment";
+import { MarketSentiment } from "@/components/MarketSentiment";
 import { PositionCard } from "@/components/PositionCard";
 import { PredictButtons } from "@/components/PredictButtons";
 import { PriceWidget } from "@/components/PriceWidget";
@@ -14,13 +14,13 @@ import { SettlementOverlay } from "@/components/SettlementOverlay";
 import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
+import { useDreamdexQuote } from "@/hooks/useDreamdexQuote";
 import { useEventWindow, windowSettleAt } from "@/hooks/useEventWindow";
 import { usePriceFeed } from "@/hooks/usePriceFeed";
 import { useDreamAccount } from "@/lib/account";
 import {
   DEFAULT_ASSET,
   getAsset,
-  poolSnapshot,
   strikeFor,
   type AssetSymbol,
 } from "@/lib/assets";
@@ -52,8 +52,10 @@ export default function Home() {
   const [scope, setScope] = useState<LeaderboardScope>("group");
 
   const asset = useMemo(() => getAsset(symbol), [symbol]);
-  const pool = useMemo(() => poolSnapshot(symbol), [symbol]);
   const feed = usePriceFeed(asset);
+  // Live odds off the dreamDEX book — the price of the UP token is the crowd's
+  // implied probability, and the payout is its reciprocal.
+  const { quote, market, loading: quoteLoading } = useDreamdexQuote(symbol);
   const eventWindow = useEventWindow();
 
   const account = useDreamAccount();
@@ -91,8 +93,10 @@ export default function Home() {
       strike: bettableStrike,
       entryPrice: feed.price,
       targetWindow: eventWindow.bettableWindow,
+      // Locked in at the quote showing when they tapped, so a repricing
+      // mid-window cannot retroactively change what they were promised.
       payoutMultiplier:
-        direction === "up" ? pool.payoutUp : pool.payoutDown,
+        direction === "up" ? quote.payoutUp : quote.payoutDown,
     });
     setRound("committed");
   }
@@ -130,7 +134,7 @@ export default function Home() {
       strike: strikeFor(asset, eventWindow.windowIndex),
       entryPrice: feed.price * 0.9985,
       targetWindow: eventWindow.windowIndex,
-      payoutMultiplier: pool.payoutUp,
+      payoutMultiplier: quote.payoutUp,
     };
     setPosition({ ...staged, targetWindow: eventWindow.windowIndex });
     setSettlePrice(next === "settled" ? feed.price : null);
@@ -210,9 +214,10 @@ export default function Home() {
               />
             ) : (
               <>
-                <PoolSentiment pool={pool} />
+                <MarketSentiment quote={quote} market={market} />
                 <PredictButtons
-                  pool={pool}
+                  quote={quote}
+                  noMarket={market === null && !quoteLoading}
                   locked={eventWindow.locked}
                   ready={eventWindow.ready}
                   secondsLeft={eventWindow.secondsLeft}

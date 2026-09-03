@@ -1,5 +1,5 @@
 import { binaryResolutionMode } from "@somnia-chain/markets-sdk";
-import type { BinaryMarket } from "@somnia-chain/markets-sdk";
+import type { BinaryMarket, BinaryMarketStatus } from "@somnia-chain/markets-sdk";
 import { STRIKE_SCALE } from "./config";
 
 /** How a market decides UP: against a fixed strike, or against its own open. */
@@ -22,11 +22,9 @@ export interface DreamdexMarket {
   /** Unix seconds. */
   tradingStart: number;
   expiry: number;
-  /** Window length in seconds — live markets run 60s and 300s cadences. */
+  /** Window length in seconds — one rung of the venue's cadence ladder. */
   windowSeconds: number;
-  status: string;
-  /** True while the window still accepts orders. */
-  isOpen: boolean;
+  status: BinaryMarketStatus;
   yesTokenId: bigint;
   noTokenId: bigint;
   collateral: `0x${string}`;
@@ -36,6 +34,34 @@ export interface DreamdexMarket {
   lastProbability: number | null;
   winningOutcome: number | null;
   voided: boolean;
+  /** Collateral traded over the market's life, descaled. */
+  volume: number;
+  tradeCount: number;
+}
+
+/**
+ * Statuses that mean the book is shut for good, or shut pending settlement.
+ * `Listed` is deliberately absent: the Listed → Trading transition is implicit
+ * in the timestamps and emits no event, so a market whose `tradingStart` has
+ * passed is live regardless of the status it was last stamped with. Reading
+ * `status === "Trading"` alone would hide perfectly tradeable windows.
+ */
+const HALTED: ReadonlySet<BinaryMarketStatus> = new Set<BinaryMarketStatus>([
+  "Locked",
+  "Settling",
+  "Resolved",
+  "Voided",
+  "Finalized",
+]);
+
+/** True while the window is inside its trading period and not halted. */
+export function isTrading(market: DreamdexMarket, nowMs: number): boolean {
+  const now = Math.floor(nowMs / 1000);
+  return (
+    !HALTED.has(market.status) &&
+    now >= market.tradingStart &&
+    now < market.expiry
+  );
 }
 
 function num(v: string | number | bigint | null | undefined): number {
@@ -64,7 +90,6 @@ export function toDreamdexMarket(m: BinaryMarket): DreamdexMarket {
     expiry,
     windowSeconds: Math.max(expiry - tradingStart, 0),
     status: m.status,
-    isOpen: m.status === "Trading",
     yesTokenId: BigInt(m.yesTokenId ?? 0),
     noTokenId: BigInt(m.noTokenId ?? 0),
     collateral: m.collateral as `0x${string}`,
@@ -75,6 +100,8 @@ export function toDreamdexMarket(m: BinaryMarket): DreamdexMarket {
         : Number(m.lastPrice) / 10 ** decimals,
     winningOutcome: m.winningOutcome ?? null,
     voided: Boolean(m.voided),
+    volume: num(m.cumulativeQuoteVolume) / 10 ** decimals,
+    tradeCount: num(m.tradeCount),
   };
 }
 
@@ -130,4 +157,25 @@ export function clampProbability(p: number): number {
 /** Seconds left before the window stops accepting orders. */
 export function secondsUntilExpiry(market: DreamdexMarket, nowMs: number): number {
   return Math.max(market.expiry - Math.floor(nowMs / 1000), 0);
+}
+
+/**
+ * Choose the window to trade out of what the indexer returned. The list comes
+ * back soonest-to-expire first, which is the order a punter wants: the nearest
+ * window that is genuinely open.
+ *
+ * A window in its last seconds is skipped rather than offered — it is about to
+ * lock, and a tap that lands after expiry is a bet the user never got to make.
+ */
+export function pickTradableMarket(
+  markets: DreamdexMarket[],
+  nowMs: number,
+  minSecondsLeft = 5
+): DreamdexMarket | null {
+  return (
+    markets.find(
+      (m) =>
+        isTrading(m, nowMs) && secondsUntilExpiry(m, nowMs) >= minSecondsLeft
+    ) ?? null
+  );
 }

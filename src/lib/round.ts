@@ -23,7 +23,7 @@ export interface Position {
   entryPrice: number;
   /** Index of the event window this position settles at the close of. */
   targetWindow: number;
-  /** Parimutuel multiplier locked in at commit time. */
+  /** Payout multiplier the market was quoting when the user committed. */
   payoutMultiplier: number;
 }
 
@@ -75,11 +75,11 @@ export const MOCK_STATS: UserStats = {
 export const MOCK_HISTORY: HistoryEntry[] = [
   { id: "r25", symbol: "BTC",  direction: "up",   stake: 50, won: true,  net: 27.0,  when: "15m ago" },
   { id: "r24", symbol: "BTC",  direction: "up",   stake: 25, won: true,  net: 13.5,  when: "30m ago" },
-  { id: "r23", symbol: "SOMI", direction: "down", stake: 10, won: true,  net: 13.2,  when: "45m ago" },
+  { id: "r23", symbol: "ETH",  direction: "down", stake: 10, won: true,  net: 13.2,  when: "45m ago" },
   { id: "r22", symbol: "ETH",  direction: "up",   stake: 20, won: true,  net: 10.8,  when: "1h ago"  },
   { id: "r21", symbol: "ETH",  direction: "down", stake: 20, won: false, net: -20.0, when: "1h ago"  },
   { id: "r20", symbol: "BTC",  direction: "up",   stake: 50, won: true,  net: 27.0,  when: "2h ago"  },
-  { id: "r19", symbol: "SOMI", direction: "up",   stake: 5,  won: false, net: -5.0,  when: "2h ago"  },
+  { id: "r19", symbol: "ETH",  direction: "up",   stake: 5,  won: false, net: -5.0,  when: "2h ago"  },
   { id: "r18", symbol: "BTC",  direction: "down", stake: 10, won: true,  net: 12.4,  when: "3h ago"  },
 ];
 

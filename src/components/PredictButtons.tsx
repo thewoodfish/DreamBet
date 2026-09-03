@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Lock } from "lucide-react";
-import type { PoolSnapshot } from "@/lib/assets";
+import { Loader2, Lock } from "lucide-react";
+import type { MarketQuote } from "@/lib/dreamdex/market";
 import type { Direction } from "@/lib/round";
 import { formatDuration } from "@/lib/format";
 
@@ -14,7 +14,10 @@ const ARROW = {
 } as const;
 
 interface PredictButtonsProps {
-  pool: PoolSnapshot;
+  /** Live odds off the dreamDEX book. */
+  quote: MarketQuote;
+  /** No open window for this asset — there is nothing to bet into. */
+  noMarket: boolean;
   /** The current window stopped accepting bets; these now target the next one. */
   locked: boolean;
   /** False until the client clock ticks — we don't know which window we're in yet. */
@@ -25,7 +28,8 @@ interface PredictButtonsProps {
 }
 
 export function PredictButtons({
-  pool,
+  quote,
+  noMarket,
   locked,
   ready,
   secondsLeft,
@@ -33,37 +37,61 @@ export function PredictButtons({
 }: PredictButtonsProps) {
   return (
     <div className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
+      {/* Windows roll continuously, so this is a gap of seconds between one
+          closing and the next opening — said plainly rather than left as two
+          dead buttons with no explanation. */}
+      {noMarket && (
+        <Notice>
+          <Loader2
+            className="h-3 w-3 shrink-0 animate-spin text-zinc-500"
+            strokeWidth={2.4}
+          />
+          Waiting for the next window to open
+        </Notice>
+      )}
+
       {/* A locked window used to dead-end the whole screen. Betting never stops
           now — it rolls onto the next window, and this line says so. */}
-      {locked && (
-        <motion.p
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 py-1.5 text-[11px] font-medium text-zinc-400"
-        >
+      {!noMarket && locked && (
+        <Notice>
           <Lock className="h-3 w-3 shrink-0 text-zinc-500" strokeWidth={2.4} />
           This round is settling — you&rsquo;re betting the next one, opens in{" "}
           <span className="tnum font-mono font-semibold text-zinc-200">
             {formatDuration(secondsLeft)}
           </span>
-        </motion.p>
+        </Notice>
       )}
 
       <div className="grid grid-cols-2 gap-3">
         <PredictButton
           direction="up"
-          payout={pool.payoutUp}
-          disabled={!ready}
+          payout={quote.payoutUp}
+          indicative={quote.isIndicative}
+          disabled={!ready || noMarket}
           onPredict={onPredict}
         />
         <PredictButton
           direction="down"
-          payout={pool.payoutDown}
-          disabled={!ready}
+          payout={quote.payoutDown}
+          indicative={quote.isIndicative}
+          disabled={!ready || noMarket}
           onPredict={onPredict}
         />
       </div>
     </div>
+  );
+}
+
+/** The status line above the buttons — one look for every reason to explain. */
+function Notice({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 py-1.5 text-[11px] font-medium text-zinc-400"
+    >
+      {children}
+    </motion.p>
   );
 }
 
@@ -76,11 +104,14 @@ export function PredictButtons({
 function PredictButton({
   direction,
   payout,
+  indicative,
   disabled,
   onPredict,
 }: {
   direction: Direction;
   payout: number;
+  /** The book has never traded, so this multiplier is a placeholder. */
+  indicative: boolean;
   disabled: boolean;
   onPredict: (direction: Direction) => void;
 }) {
@@ -127,7 +158,7 @@ function PredictButton({
             isUp ? "text-up-soft/80" : "text-down-soft/80"
           }`}
         >
-          {payout.toFixed(2)}× payout
+          {payout.toFixed(2)}× {indicative ? "est. payout" : "payout"}
         </span>
       </span>
     </motion.button>

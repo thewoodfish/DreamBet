@@ -65,8 +65,21 @@ export const STRIKE_SCALE = 100;
  */
 export const PROBABILITY_ONE = 1;
 
-/** Live event windows run on a 60s and a 300s cadence, per asset. */
-export const WINDOW_SECONDS = [60, 300] as const;
+/**
+ * Cadences the venue actually rolls, per asset, verified against the live
+ * board: 1m, 5m, 15m, 1h, 4h and 24h series all run concurrently.
+ */
+export const WINDOW_SECONDS = [60, 300, 900, 3600, 14400, 86400] as const;
+
+/**
+ * The cadence DreamBet trades. 15m is long enough that a group has time to
+ * pile in after someone shares a bet, and short enough to settle inside a
+ * single sitting.
+ *
+ * Matched as a band by the indexer, not exactly — trading routinely opens a
+ * second or two late, so a 15m series is indexed at 898s and 899s as well.
+ */
+export const APP_CADENCE_SECONDS = 900;
 
 /**
  * Event contracts exist for these assets only. The mock feed also carried SOMI,

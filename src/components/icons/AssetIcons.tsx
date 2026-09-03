@@ -29,35 +29,9 @@ function EthMark() {
   );
 }
 
-/**
- * Somnia (Latin: "dreams") doesn't have a fixed brand mark to source here, so
- * this is a bespoke crescent-and-star glyph that ties the chain name back to
- * the DreamBet theme rather than reusing an unverified logo.
- */
-function SomiMark() {
-  return (
-    <svg viewBox="0 0 32 32" className="h-full w-full" aria-hidden="true">
-      <defs>
-        <linearGradient id="somiBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#38bdf8" />
-          <stop offset="1" stopColor="#06b6d4" />
-        </linearGradient>
-      </defs>
-      <circle cx="16" cy="16" r="16" fill="url(#somiBg)" />
-      <path
-        d="M19,8 a9,9 0 1 0 0,16 a7.2,7.2 0 1 1 0,-16 Z"
-        fill="#fff"
-        fillOpacity="0.95"
-      />
-      <circle cx="22.6" cy="10.2" r="1.6" fill="#fff" />
-    </svg>
-  );
-}
-
 const MARKS: Record<AssetSymbol, () => React.JSX.Element> = {
   BTC: BtcMark,
   ETH: EthMark,
-  SOMI: SomiMark,
 };
 
 interface AssetIconProps {

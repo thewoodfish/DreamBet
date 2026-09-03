@@ -1,4 +1,11 @@
-export type AssetSymbol = "BTC" | "ETH" | "SOMI";
+import type { TradableAsset } from "@/lib/dreamdex/config";
+
+/**
+ * Bound to the assets dreamDEX actually lists a binary market for, so the pill
+ * row cannot drift back into offering something unbettable — the mock feed
+ * carried SOMI, which has a spot price but no event contract behind it.
+ */
+export type AssetSymbol = TradableAsset;
 
 export interface Asset {
   symbol: AssetSymbol;
@@ -29,14 +36,6 @@ export const ASSETS: Asset[] = [
     basePrice: 3_512.88,
     volatility: 0.0013,
     decimals: 2,
-  },
-  {
-    symbol: "SOMI",
-    pair: "SOMI/USDso",
-    name: "Somnia",
-    basePrice: 1.284,
-    volatility: 0.0031,
-    decimals: 4,
   },
 ];
 
@@ -107,7 +106,7 @@ export function nextPrice(asset: Asset, last: number): number {
  * window opens. Deriving it from (symbol, window) means every client in a
  * Telegram group computes the same strike with no shared state — and, unlike a
  * per-user entry price, it makes UP and DOWN genuinely opposite outcomes, which
- * is what the parimutuel odds in `poolSnapshot` assume.
+ * is what a binary market's two sides mean.
  *
  * Step 4 replaces this with the strike the event contract actually published.
  */
@@ -118,35 +117,4 @@ export function strikeFor(asset: Asset, windowIndex: number): number {
   const raw = asset.basePrice * (1 + offset);
   const factor = 10 ** asset.decimals;
   return Math.round(raw * factor) / factor;
-}
-
-export interface PoolSnapshot {
-  /** Share of the pool sitting on UP, 0–1. */
-  upShare: number;
-  /** Parimutuel multiplier on a winning UP position, e.g. 1.85×. */
-  payoutUp: number;
-  payoutDown: number;
-  /** Total USDso staked across both sides. */
-  totalStaked: number;
-}
-
-/** House cut taken out of the losing side before it's redistributed. */
-const RAKE = 0.03;
-
-/**
- * Deterministic stand-in for the live dreamDEX pool. Parimutuel odds: the
- * lighter side pays more, so the numbers move together the way they will once
- * Step 4 reads real contract state.
- */
-export function poolSnapshot(symbol: AssetSymbol): PoolSnapshot {
-  const rand = mulberry32(seedFromSymbol(`${symbol}-pool`));
-  const upShare = 0.35 + rand() * 0.3;
-  const totalStaked = Math.round((8_000 + rand() * 24_000) / 10) * 10;
-
-  return {
-    upShare,
-    payoutUp: (1 / upShare) * (1 - RAKE),
-    payoutDown: (1 / (1 - upShare)) * (1 - RAKE),
-    totalStaked,
-  };
 }
