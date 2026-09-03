@@ -6,6 +6,7 @@ import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADABLE_ASSETS, PRICE_SERIES_CADENC
 import { buySideFor, descale, toRaw } from "../src/lib/dreamdex/book.ts";
 import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
+import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 
 let fail = 0;
 const ok = (label: string, cond: boolean, extra = "") => {
@@ -96,6 +97,70 @@ ok("the recorded multiplier pays out what the fill promised", (() => {
   // Winning returns the shares: profit is shares minus what they cost.
   return Math.abs(netResult(pos, "up") - (f.shares - f.cost)) < 1e-9;
 })());
+
+// --- challenge links: the viral loop, and the only attacker-supplied input ---
+const dare = { from: "kelechi", symbol: "BTC" as const, direction: "up" as const };
+const link = challengeUrl(dare);
+const param = new URL(link, "http://x").searchParams.get("startapp")!;
+
+ok("a challenge survives the round trip through a link", (() => {
+  const back = parseChallenge(param);
+  return back?.from === "kelechi" && back.symbol === "BTC" && back.direction === "up";
+})(), link);
+ok("the same challenge is readable straight off a query string",
+   challengeFromSearch(`?startapp=${param}`)?.symbol === "BTC");
+// Telegram accepts [A-Za-z0-9_-] in a start parameter and nothing else, so a
+// link carrying base64 padding would be refused before it ever opened.
+ok("the link carries a start param Telegram will accept",
+   /^[A-Za-z0-9_-]{1,512}$/.test(param), param);
+ok("a link that lost its padding in transit still decodes", (() => {
+  const stripped = param.replace(/=+$/, "");
+  return parseChallenge(stripped)?.symbol === "BTC";
+})());
+ok("an anonymous challenge round-trips as anonymous",
+   parseChallenge(new URL(challengeUrl({ ...dare, from: null }), "http://x").searchParams.get("startapp")!)?.from === null);
+
+// Every one of these is something a forwarded link can be edited to say.
+ok("no start param is no challenge",
+   parseChallenge(undefined) === null && parseChallenge("") === null && parseChallenge(null) === null);
+ok("a start param that isn't a challenge is rejected",
+   parseChallenge("not-base64url!!") === null);
+ok("an untradable asset is refused, however the link spells it", (() => {
+  const forged = Buffer.from(JSON.stringify({ f: "x", s: "SOMI", d: "up" })).toString("base64url");
+  return parseChallenge(forged) === null;
+})());
+ok("an unknown direction is refused rather than defaulted", (() => {
+  const forged = Buffer.from(JSON.stringify({ f: "x", s: "BTC", d: "sideways" })).toString("base64url");
+  return parseChallenge(forged) === null;
+})());
+ok("a missing field yields no challenge, not a half-filled one", (() => {
+  const forged = Buffer.from(JSON.stringify({ s: "BTC" })).toString("base64url");
+  return parseChallenge(forged) === null;
+})());
+ok("a JSON array is not a challenge",
+   parseChallenge(Buffer.from(JSON.stringify(["BTC", "up"])).toString("base64url")) === null);
+ok("an oversized handle is capped rather than rendered whole", (() => {
+  const forged = Buffer.from(JSON.stringify({ f: "a".repeat(500), s: "ETH", d: "down" })).toString("base64url");
+  return parseChallenge(forged)?.from?.length === 32;
+})());
+
+// The share copy has to name the right side and the right money, because it is
+// the only part of this product that strangers ever read.
+ok("the bet copy names the side taken and invites the other",
+   betText(dare, "50.00", "tUSDC").includes("BTC goes UP") &&
+   betText(dare, "50.00", "tUSDC").includes("50.00 tUSDC") &&
+   betText(dare, "50.00", "tUSDC").includes("other side"));
+ok("a win brags and a miss does not", (() => {
+  const won = resultText(dare, "27.00", true, false, "tUSDC");
+  const lost = resultText(dare, "50.00", false, false, "tUSDC");
+  return won.includes("just won 27.00 tUSDC") && !lost.includes("won") && lost.includes("missed");
+})());
+ok("a void is neither a win nor a loss in the copy", (() => {
+  const void_ = resultText(dare, "0.00", false, true, "tUSDC");
+  return void_.includes("voided") && !void_.includes("missed") && !void_.includes("won");
+})());
+ok("an anonymous player is still named something",
+   betText({ ...dare, from: null }, "5.00", "tUSDC").startsWith("🔥 Someone"));
 
 const ex = new SomniaMarkets({
   indexerUrl: "https://dev.smk.somnia.host/v1/graphql",

@@ -7,6 +7,7 @@ import { useDreamAccount } from "@/lib/account";
 import { useStakeQuote } from "@/hooks/useStakeQuote";
 import { NETWORK } from "@/lib/dreamdex/config";
 import { betErrorMessage, placeBet, type BetFill } from "@/lib/dreamdex/trade";
+import { haptic } from "@/lib/telegram";
 import type { DreamdexMarket } from "@/lib/dreamdex/market";
 import type { StakeQuote } from "@/lib/dreamdex/book";
 import type { Asset } from "@/lib/assets";
@@ -67,19 +68,24 @@ export function TradeTicket({
     if (!quote) return;
     setSubmitting(true);
     setError(null);
+    // Heavier than arming a side, because this one spends money.
+    haptic.press();
+
     try {
       const signer = await account.getSigner();
       if (!signer) throw new Error("No wallet to sign with");
 
-      onPlaced(
-        await placeBet({
-          signer,
-          pool: market.poolAddress,
-          quote,
-          decimals: market.decimals,
-        })
-      );
+      const fill = await placeBet({
+        signer,
+        pool: market.poolAddress,
+        quote,
+        decimals: market.decimals,
+      });
+
+      haptic.success();
+      onPlaced(fill);
     } catch (cause) {
+      haptic.failure();
       setError(betErrorMessage(cause));
     } finally {
       setSubmitting(false);
@@ -365,7 +371,10 @@ function QuickPill({
   return (
     <motion.button
       type="button"
-      onClick={onSelect}
+      onClick={() => {
+        haptic.select();
+        onSelect();
+      }}
       disabled={disabled}
       whileTap={disabled ? undefined : { scale: 0.94 }}
       className={`tnum rounded-xl py-2 text-[13px] font-semibold transition-colors disabled:opacity-40 ${

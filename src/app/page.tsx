@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { AssetSelector } from "@/components/AssetSelector";
+import { ChallengeBanner } from "@/components/ChallengeBanner";
 import { CountdownBar } from "@/components/CountdownBar";
 import { DevStateSwitcher } from "@/components/DevStateSwitcher";
 import { RecordSheet, type RecordTab } from "@/components/RecordSheet";
@@ -11,6 +12,7 @@ import { PositionCard } from "@/components/PositionCard";
 import { PredictButtons } from "@/components/PredictButtons";
 import { PriceWidget } from "@/components/PriceWidget";
 import { SettlementOverlay } from "@/components/SettlementOverlay";
+import { ShareSheet, type ShareSubject } from "@/components/ShareSheet";
 import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
 import { TradeTicket } from "@/components/TradeTicket";
@@ -20,6 +22,8 @@ import { useEventWindow } from "@/hooks/useEventWindow";
 import { usePriceFeed } from "@/hooks/usePriceFeed";
 import { useSettlement } from "@/hooks/useSettlement";
 import { useDreamAccount } from "@/lib/account";
+import type { Challenge } from "@/lib/challenge";
+import { haptic, useTelegram } from "@/lib/telegram";
 import type { BetFill } from "@/lib/dreamdex/trade";
 import { DEFAULT_ASSET, getAsset, type AssetSymbol } from "@/lib/assets";
 import type { LeaderboardScope } from "@/lib/leaderboard";
@@ -28,6 +32,7 @@ import {
   MOCK_STAKE,
   MOCK_STATS,
   isAhead,
+  netResult,
   type Direction,
   type Position,
   type RoundState,
@@ -46,9 +51,11 @@ export default function Home() {
   const [ticket, setTicket] = useState<Direction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTab, setSheetTab] = useState<RecordTab>("record");
-  // Step 5 reads Telegram's initData: chat_instance only exists when the Mini
-  // App is launched from a group, so group scope must degrade to global.
-  const [scope, setScope] = useState<LeaderboardScope>("group");
+  /** What the share card is currently showing, if it is open. */
+  const [share, setShare] = useState<ShareSubject | null>(null);
+  /** The challenge this session arrived on, until it is acted on or dismissed. */
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [scope, setScope] = useState<LeaderboardScope>("global");
 
   const asset = useMemo(() => getAsset(symbol), [symbol]);
   const feed = usePriceFeed(asset);
@@ -59,7 +66,14 @@ export default function Home() {
     useDreamdexWindow(symbol);
   const eventWindow = useEventWindow(market);
 
+  const telegram = useTelegram();
   const account = useDreamAccount();
+  // Telegram's own handle is the better one: it is there from the first frame,
+  // before any wallet exists, and it is the name the group already knows.
+  const username = telegram.username ?? account.username;
+  // chat_instance only exists when the Mini App was opened from a group, so
+  // without one there is no group whose standings could be shown.
+  const groupAvailable = telegram.chatInstance !== null;
   const collateral = useCollateralBalance(account.address);
   // Real balance once there is a wallet to read; the mock figure otherwise.
   const balance = account.isMock ? MOCK_BALANCE : collateral.value;
@@ -105,16 +119,30 @@ export default function Home() {
     setRound("committed");
     // The stake has left the wallet; show that without waiting for the poll.
     collateral.refresh();
+    // A bet that stays on one phone is worth nothing to this product, so the
+    // card is offered at the moment of most conviction rather than buried.
+    setShare({
+      kind: "bet",
+      direction: ticket,
+      stake: fill.cost,
+      multiplier: fill.payoutMultiplier,
+    });
+    // Whatever brought them here has been answered.
+    setChallenge(null);
   }
 
   function resetRound() {
     setPosition(null);
     setTicket(null);
+    setShare(null);
     setRound("open");
   }
 
   function handleSelectAsset(next: AssetSymbol) {
     setSymbol(next);
+    // A challenge names one asset. Once the user has navigated away from it,
+    // the banner is describing a screen they are no longer looking at.
+    setChallenge(null);
     resetRound();
   }
 
@@ -149,6 +177,24 @@ export default function Home() {
     setRound("committed");
   }
 
+  /**
+   * A challenge link decides which asset this session opens on — arriving from
+   * a chat about BTC and landing on ETH would lose the thread. The side is
+   * deliberately not armed for them: the banner names it, and the tap stays
+   * theirs.
+   */
+  useEffect(() => {
+    if (!telegram.ready || !telegram.challenge) return;
+    setSymbol(telegram.challenge.symbol);
+    setChallenge(telegram.challenge);
+  }, [telegram.ready, telegram.challenge]);
+
+  // "This group" needs a group to have launched from. Anywhere else the tab is
+  // disabled, and a scope left pointing at it would show standings for nobody.
+  useEffect(() => {
+    if (groupAvailable) setScope("group");
+  }, [groupAvailable]);
+
   // A ticket is written against one window. When that window locks or rolls,
   // the bet it describes no longer exists, so it closes rather than sitting
   // there ready to submit an order the market would reject.
@@ -159,8 +205,14 @@ export default function Home() {
   // The contract has spoken. Nothing is decided locally — this only moves the
   // UI to the result once the window it was watching has actually resolved.
   useEffect(() => {
-    if (round === "committed" && settlement !== null) setRound("settled");
-  }, [round, settlement]);
+    if (round !== "committed" || settlement === null || !position) return;
+    setRound("settled");
+    // The verdict is the one moment the phone should speak for itself. A loss
+    // is a warning, not an error: nothing went wrong, the call just missed.
+    if (settlement.voided) haptic.tap();
+    else if (settlement.winner === position.direction) haptic.success();
+    else haptic.warning();
+  }, [round, settlement, position]);
 
   const ahead =
     position && feed.price !== null ? isAhead(position, feed.price) : false;
@@ -213,6 +265,16 @@ export default function Home() {
           </div>
 
           <div className="space-y-3 pt-1">
+            <AnimatePresence>
+              {challenge && round === "open" && (
+                <ChallengeBanner
+                  key="challenge"
+                  challenge={challenge}
+                  onDismiss={() => setChallenge(null)}
+                />
+              )}
+            </AnimatePresence>
+
             {round === "committed" && position ? (
               <PositionCard
                 asset={asset}
@@ -260,8 +322,29 @@ export default function Home() {
               position={position}
               settlement={settlement}
               streak={streak}
-              onShare={() => undefined}
+              onShare={() =>
+                setShare({
+                  kind: "result",
+                  direction: position.direction,
+                  net: netResult(position, settlement.winner),
+                  won: settlement.winner === position.direction,
+                  voided: settlement.voided,
+                })
+              }
               onNextRound={resetRound}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Above the settlement takeover, because it is offered from it. */}
+        <AnimatePresence>
+          {share && (
+            <ShareSheet
+              key="share"
+              asset={asset}
+              subject={share}
+              username={username}
+              onClose={() => setShare(null)}
             />
           )}
         </AnimatePresence>
@@ -276,6 +359,7 @@ export default function Home() {
               onTabChange={setSheetTab}
               scope={scope}
               onScopeChange={setScope}
+              groupAvailable={groupAvailable}
               onClose={() => setSheetOpen(false)}
             />
           )}

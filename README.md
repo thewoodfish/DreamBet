@@ -6,10 +6,11 @@ Predict whether an asset closes UP or DOWN inside a 15-minute event window, in t
 
 ## Status
 
-**Steps 1–4 complete.** The round, the odds, the money and the verdict are all
+**All five steps complete.** The round, the odds, the money and the verdict are
 real: windows and prices come off the live event contracts, a bet is a market
-order against the resting book, and settlement is the contract's own answer.
-What is left is Telegram itself — haptics, identity and the share card.
+order against the resting book, settlement is the contract's own answer, and a
+placed bet leaves as a challenge link that lands somebody on the other side of
+it.
 
 | Step | Scope | State |
 | --- | --- | --- |
@@ -17,11 +18,13 @@ What is left is Telegram itself — haptics, identity and the share card.
 | 2 | Prediction / input bottom sheet | ✅ Done |
 | 3 | Embedded wallet onboarding (Privy) | ✅ Done |
 | 4 | dreamDEX contract read/write hooks | ✅ Done |
-| 5 | Telegram haptics + viral share card | Not started |
+| 5 | Telegram haptics + viral share card | ✅ Done |
 
 Still mocked, and deliberately so: the user's record, streak and leaderboard
-(`MOCK_STATS` / `MOCK_HISTORY` in `lib/round.ts`), which need history the app
-does not yet keep.
+(`MOCK_STATS` / `MOCK_HISTORY` in `lib/round.ts`, `MOCK_LEADERBOARD` in
+`lib/leaderboard.ts`), which need settlement history the app does not yet keep.
+The leaderboard's "this group" scope is already gated on a real `chat_instance`
+— it is the standings behind it that are invented.
 
 ## Run it
 
@@ -70,6 +73,8 @@ src/
   lib/dreamdex/book      stake -> shares, walked over the live book
   lib/dreamdex/trade     placing the order, and reading back its fills
   lib/account            who is playing, and what signs for them
+  lib/telegram           launch context, haptics, native share
+  lib/challenge          challenge links: build, parse, and the share copy
   lib/round              position shape and payout maths
 ```
 
@@ -86,13 +91,28 @@ src/
 5. `useSettlement` waits for the market to resolve and reads `winningOutcome`.
    A void returns the stake and is shown as a void, not a loss.
 
-### Notes for Step 5
+### How the challenge loop works
 
-- **Identity.** `lib/account.tsx` already publishes the Telegram handle Privy
-  gives it — that is the name the share card needs.
-- **Group scope.** The leaderboard's `group` scope needs `chat_instance` from
-  Telegram's `initData`, which only exists when the Mini App is launched from a
-  group; it has to degrade to global when it isn't.
-- **The share moment.** `SettlementOverlay` already takes an `onShare`, and the
-  result screen is deliberately where it is asked for — "I won" travels further
-  than "I bet".
+1. A bet is placed. The share card appears immediately, because that is the
+   moment of most conviction — and again from the settlement screen, where "I
+   won" travels further than "I bet".
+2. `challengeUrl` encodes who, which asset and which side into a Telegram start
+   parameter: `https://t.me/<bot>/<app>?startapp=<challenge>`.
+3. `shareToChat` opens Telegram's native chat picker, so the link lands in the
+   group the player came from. Outside Telegram it degrades to the platform
+   share sheet and then the clipboard, so the loop is exercisable in a browser.
+4. A recipient opens the link. `parseChallenge` reads it back, the app lands on
+   the asset it names, and a banner names the side left over — theirs is taken,
+   so the invitation is to oppose it.
+
+Start parameters are attacker-supplied and forwarded links get mangled, so the
+parser validates every field against what the app supports, caps the handle,
+and tolerates lost base64 padding. Links are emitted unpadded, because Telegram
+only accepts `[A-Za-z0-9_-]` in a start parameter.
+
+### Running outside Telegram
+
+Everything degrades rather than breaks. Haptics become no-ops, the native share
+falls back to the clipboard, `?startapp=` in the address bar stands in for a
+Telegram start parameter, and the "this group" leaderboard is disabled because
+there is no `chat_instance` to scope it by.

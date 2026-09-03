@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Loader2, Lock } from "lucide-react";
+import { haptic } from "@/lib/telegram";
 import type { MarketQuote } from "@/lib/dreamdex/market";
 import type { Direction } from "@/lib/round";
 
@@ -127,7 +128,12 @@ function PredictButton({
     <motion.button
       type="button"
       disabled={disabled}
-      onClick={() => onPredict(direction)}
+      onClick={() => {
+        // The buzz is the confirmation that the tap registered, so it fires
+        // with the tap rather than after whatever the tap opens.
+        haptic.tap();
+        onPredict(direction);
+      }}
       whileTap={disabled ? undefined : { scale: 0.955 }}
       animate={{ opacity: disabled ? 0.4 : 1 }}
       transition={{ type: "spring", stiffness: 600, damping: 30 }}
