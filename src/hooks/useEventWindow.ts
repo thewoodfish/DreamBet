@@ -17,6 +17,8 @@ export interface EventWindow {
   progress: number;
   /** Within the final seconds, new positions are refused. */
   locked: boolean;
+  /** Index of the current wall-clock window. Changes = the previous one settled. */
+  windowIndex: number;
 }
 
 /**
@@ -33,7 +35,7 @@ export function useEventWindow(): EventWindow {
   }, []);
 
   if (now === null) {
-    return { ready: false, secondsLeft: 0, progress: 0, locked: false };
+    return { ready: false, secondsLeft: 0, progress: 0, locked: false, windowIndex: 0 };
   }
 
   const elapsed = now % WINDOW_MS;
@@ -45,5 +47,6 @@ export function useEventWindow(): EventWindow {
     secondsLeft,
     progress: elapsed / WINDOW_MS,
     locked: secondsLeft <= LOCK_SECONDS,
+    windowIndex: Math.floor(now / WINDOW_MS),
   };
 }

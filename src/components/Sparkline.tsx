@@ -9,6 +9,8 @@ const PAD_Y = 8;
 interface SparklineProps {
   points: number[];
   positive: boolean;
+  /** When set, draws the user's entry as a reference line across the chart. */
+  entryPrice?: number;
 }
 
 /**
@@ -16,11 +18,11 @@ interface SparklineProps {
  * stretched with preserveAspectRatio="none"; `vector-effect` keeps the stroke
  * an even weight despite the non-uniform scale.
  */
-export function Sparkline({ points, positive }: SparklineProps) {
+export function Sparkline({ points, positive, entryPrice }: SparklineProps) {
   const gradientId = useId();
   const stroke = positive ? "#22c55e" : "#f43f5e";
 
-  const { line, area, lastX, lastY } = useMemo(() => {
+  const { line, area, lastX, lastY, entryY } = useMemo(() => {
     const min = Math.min(...points);
     const max = Math.max(...points);
     const span = max - min || 1;
@@ -37,13 +39,23 @@ export function Sparkline({ points, positive }: SparklineProps) {
       .join(" ");
 
     const [fx, fy] = coords[coords.length - 1];
+
+    // Clamp the entry line into view so it stays visible even after a big move.
+    const toY = (value: number) =>
+      VIEW_H - PAD_Y - ((value - min) / span) * (VIEW_H - PAD_Y * 2);
+    const entry =
+      entryPrice === undefined
+        ? null
+        : Math.min(Math.max(toY(entryPrice), PAD_Y), VIEW_H - PAD_Y);
+
     return {
       line: d,
       area: `${d} L${VIEW_W},${VIEW_H} L0,${VIEW_H} Z`,
       lastX: fx,
       lastY: fy,
+      entryY: entry,
     };
-  }, [points]);
+  }, [points, entryPrice]);
 
   return (
     <svg
@@ -60,6 +72,20 @@ export function Sparkline({ points, positive }: SparklineProps) {
       </defs>
 
       <path d={area} fill={`url(#${gradientId})`} />
+
+      {/* The user's entry, so the wait has a personal reference point. */}
+      {entryY !== null && (
+        <line
+          x1={0}
+          y1={entryY}
+          x2={VIEW_W}
+          y2={entryY}
+          stroke="#a1a1aa"
+          strokeWidth={1}
+          strokeDasharray="4 4"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       <path
         d={line}
         fill="none"

@@ -9,9 +9,11 @@ import { formatPercent, formatPrice } from "@/lib/format";
 interface PriceWidgetProps {
   asset: Asset;
   feed: PriceFeed;
+  /** Set while the user holds a position, to mark their entry on the chart. */
+  entryPrice?: number;
 }
 
-export function PriceWidget({ asset, feed }: PriceWidgetProps) {
+export function PriceWidget({ asset, feed, entryPrice }: PriceWidgetProps) {
   const positive = feed.changePct >= 0;
   const Trend = positive ? TrendingUp : TrendingDown;
 
@@ -53,7 +55,11 @@ export function PriceWidget({ asset, feed }: PriceWidgetProps) {
 
       {/* Absorbs the slack on taller phones so the card never floats. */}
       <div className="mt-2 min-h-[88px] w-full flex-1">
-        <Sparkline points={feed.history} positive={positive} />
+        <Sparkline
+          points={feed.history}
+          positive={positive}
+          entryPrice={entryPrice}
+        />
       </div>
 
       <div className="flex items-center justify-between px-5 pb-3 pt-1">

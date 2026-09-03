@@ -1,10 +1,9 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: [
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  // Must cover all of src/: the per-asset gradient classes live in
+  // src/lib/assets.ts, and are dropped from the build if it isn't scanned.
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       fontFamily: {
