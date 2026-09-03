@@ -13,12 +13,14 @@ import { PriceWidget } from "@/components/PriceWidget";
 import { SettlementOverlay } from "@/components/SettlementOverlay";
 import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
+import { TradeTicket } from "@/components/TradeTicket";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
 import { useDreamdexWindow } from "@/hooks/useDreamdexWindow";
 import { useEventWindow } from "@/hooks/useEventWindow";
 import { usePriceFeed } from "@/hooks/usePriceFeed";
 import { useSettlement } from "@/hooks/useSettlement";
 import { useDreamAccount } from "@/lib/account";
+import type { BetFill } from "@/lib/dreamdex/trade";
 import { DEFAULT_ASSET, getAsset, type AssetSymbol } from "@/lib/assets";
 import type { LeaderboardScope } from "@/lib/leaderboard";
 import {
@@ -40,6 +42,8 @@ export default function Home() {
   const [symbol, setSymbol] = useState<AssetSymbol>(DEFAULT_ASSET);
   const [round, setRound] = useState<RoundState>("open");
   const [position, setPosition] = useState<Position | null>(null);
+  /** The side the user has armed, and so the ticket that is open. */
+  const [ticket, setTicket] = useState<Direction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTab, setSheetTab] = useState<RecordTab>("record");
   // Step 5 reads Telegram's initData: chat_instance only exists when the Mini
@@ -80,25 +84,32 @@ export default function Home() {
       ? MOCK_STATS.streak + 1
       : 0;
 
-  function openPosition(direction: Direction) {
-    if (!market || boundary === null) return;
+  /**
+   * A confirmed order becomes the position. Every number here is what the
+   * transaction actually did — the shares it filled and the collateral it
+   * really spent — rather than the quote that preceded it, because the book can
+   * move between the two and only one of them is a receipt.
+   */
+  function handlePlaced(fill: BetFill) {
+    if (!market || !ticket || boundary === null) return;
 
     setPosition({
-      direction,
-      stake: MOCK_STAKE,
+      direction: ticket,
+      stake: fill.cost,
       marketId: market.marketId,
       strike: boundary,
       entryPrice: feed.price ?? boundary,
-      // Locked in at the quote showing when they tapped, so a repricing
-      // mid-window cannot retroactively change what they were promised.
-      payoutMultiplier:
-        direction === "up" ? quote.payoutUp : quote.payoutDown,
+      payoutMultiplier: fill.payoutMultiplier,
     });
+    setTicket(null);
     setRound("committed");
+    // The stake has left the wallet; show that without waiting for the poll.
+    collateral.refresh();
   }
 
   function resetRound() {
     setPosition(null);
+    setTicket(null);
     setRound("open");
   }
 
@@ -107,10 +118,9 @@ export default function Home() {
     resetRound();
   }
 
-  // Step 2 replaces this with the bottom-sheet trade ticket; for now a tap
-  // commits the mock stake directly so the committed state is reachable.
+  // Tapping a side arms it and asks the only remaining question — how much.
   function handlePredict(direction: Direction) {
-    openPosition(direction);
+    setTicket(direction);
   }
 
   /**
@@ -125,6 +135,7 @@ export default function Home() {
       return;
     }
 
+    setTicket(null);
     setPosition(
       position ?? {
         direction: "up",
@@ -137,6 +148,13 @@ export default function Home() {
     );
     setRound("committed");
   }
+
+  // A ticket is written against one window. When that window locks or rolls,
+  // the bet it describes no longer exists, so it closes rather than sitting
+  // there ready to submit an order the market would reject.
+  useEffect(() => {
+    if (ticket && !bettable) setTicket(null);
+  }, [ticket, bettable]);
 
   // The contract has spoken. Nothing is decided locally — this only moves the
   // UI to the result once the window it was watching has actually resolved.
@@ -218,6 +236,21 @@ export default function Home() {
             <DevStateSwitcher value={round} onChange={handleDevState} />
           </div>
         </div>
+
+        <AnimatePresence>
+          {ticket && market && boundary !== null && (
+            <TradeTicket
+              key="trade-ticket"
+              asset={asset}
+              direction={ticket}
+              market={market}
+              balance={balance}
+              secondsLeft={eventWindow.secondsLeft}
+              onClose={() => setTicket(null)}
+              onPlaced={handlePlaced}
+            />
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {round === "settled" && position && settlement && (

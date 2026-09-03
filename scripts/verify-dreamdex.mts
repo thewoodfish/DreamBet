@@ -1,7 +1,10 @@
-import { SomniaMarkets } from "@somnia-chain/markets-sdk";
+import { SomniaMarkets, quoteBinaryStakeOverBook } from "@somnia-chain/markets-sdk";
+import type { BinaryOrderBook, PlaceOrderResult } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import { toDreamdexMarket, quoteFromProbability, clampProbability, isTrading, pickTradableMarket, marketBoundary, resolvedDirection } from "../src/lib/dreamdex/market.ts";
 import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADABLE_ASSETS, PRICE_SERIES_CADENCE_SECONDS } from "../src/lib/dreamdex/config.ts";
+import { buySideFor, descale, toRaw } from "../src/lib/dreamdex/book.ts";
+import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
 
 let fail = 0;
@@ -9,6 +12,90 @@ const ok = (label: string, cond: boolean, extra = "") => {
   if (!cond) fail++;
   console.log(`${cond ? "PASS" : "FAIL"}  ${label}${extra ? "  " + extra : ""}`);
 };
+
+// --- stake sizing and fills: pure, and first, so they still report when the
+// --- indexer is unreachable ---
+const D = 6;
+const ONE = 10n ** BigInt(D);
+const level = (price: number, qty: number) => ({
+  price: BigInt(Math.round(price * Number(ONE))),
+  quantity: BigInt(Math.round(qty * Number(ONE))),
+});
+// A YES book with asks at 0.50 and 0.55; the NO sides are the inverse.
+const book: BinaryOrderBook = {
+  yesAsks: [level(0.50, 40), level(0.55, 200)],
+  yesBids: [level(0.45, 60), level(0.40, 200)],
+  noAsks: [level(0.55, 60), level(0.60, 200)],
+  noBids: [level(0.50, 40), level(0.45, 200)],
+};
+const grid = { tickSize: ONE / 1000n, lotSize: ONE / 100n, minQuantity: ONE / 10n };
+
+ok("UP buys YES and DOWN buys NO", buySideFor("up") === "BUY_YES" && buySideFor("down") === "BUY_NO");
+ok("a stake descales and rescales to itself", descale(toRaw(12.34, D), D) === 12.34);
+ok("sub-unit dust is dropped, never rounded up", toRaw(1.0000009, 6) === 1_000_000n);
+ok("a zero or negative stake sizes nothing", toRaw(0, D) === 0n && toRaw(-5, D) === 0n);
+
+for (const side of ["BUY_YES", "BUY_NO"] as const) {
+  const q = quoteBinaryStakeOverBook(book, side, toRaw(20, D), ONE, grid)!;
+  ok(`${side}: a 20 stake is sized against the book`, q !== null);
+  // The whole point of sizing over the book: the escrow is the max loss, and it
+  // can never exceed what the user typed.
+  ok(`${side}: escrow never exceeds the stake`, q.escrow <= toRaw(20, D), `${descale(q.escrow, D)}`);
+  ok(`${side}: shares exceed the stake, so the bet can pay`, q.quantity > q.escrow);
+  ok(`${side}: the quantity sits on the lot grid`, q.quantity % grid.lotSize === 0n);
+  ok(`${side}: the limit sits on the tick grid`, q.yesPrice % grid.tickSize === 0n);
+  console.log(`   ${side}: ${descale(q.quantity, D)} shares for ${descale(q.escrow, D)}` +
+    `  (${(descale(q.quantity, D) / descale(q.escrow, D)).toFixed(2)}x)`);
+}
+
+ok("an empty book sizes nothing rather than a doomed order",
+   quoteBinaryStakeOverBook({ yesAsks: [], yesBids: [], noAsks: [], noBids: [] }, "BUY_YES", toRaw(20, D), ONE, grid) === null);
+ok("a stake below one lot sizes nothing",
+   quoteBinaryStakeOverBook(book, "BUY_YES", toRaw(0.001, D), ONE, grid) === null);
+ok("a bigger stake eats worse levels, so its multiplier is never better", (() => {
+  const small = quoteBinaryStakeOverBook(book, "BUY_YES", toRaw(5, D), ONE, grid)!;
+  const large = quoteBinaryStakeOverBook(book, "BUY_YES", toRaw(60, D), ONE, grid)!;
+  const rate = (q: typeof small) => Number(q.quantity) / Number(q.escrow);
+  return rate(large) <= rate(small) + 1e-9;
+})());
+
+// --- fills: what the order really did, in the outcome's own terms ---
+const receipt = (fills: [number, number][]): PlaceOrderResult => ({
+  hash: "0xfeed" as `0x${string}`,
+  receipt: {} as PlaceOrderResult["receipt"],
+  fills: fills.map(([price, qty]) => ({
+    takerOrderId: 0n, makerOrderId: 0n, takerRemainingQuantity: 0n, makerRemainingQuantity: 0n,
+    quantityFilled: BigInt(Math.round(qty * Number(ONE))),
+    fillPrice: BigInt(Math.round(price * Number(ONE))),
+  })),
+});
+const quoteFor = (side: "BUY_YES" | "BUY_NO") => ({ side } as Parameters<typeof fillOf>[1]);
+
+// 10 shares at a YES print of 0.50 costs 5 to the UP side.
+ok("an UP fill is priced at the YES print", (() => {
+  const f = fillOf(receipt([[0.5, 10]]), quoteFor("BUY_YES"), D);
+  return f.shares === 10 && f.cost === 5 && Math.abs(f.payoutMultiplier - 2) < 1e-12;
+})());
+// The same print costs the DOWN side 0.50 — buying NO at 1 − 0.50.
+ok("a DOWN fill is priced at the inverse of the YES print", (() => {
+  const f = fillOf(receipt([[0.8, 10]]), quoteFor("BUY_NO"), D);
+  return f.shares === 10 && Math.abs(f.cost - 2) < 1e-9 && Math.abs(f.payoutMultiplier - 5) < 1e-9;
+})());
+ok("a multi-level fill blends into one average, not the best price", (() => {
+  const f = fillOf(receipt([[0.5, 10], [0.6, 10]]), quoteFor("BUY_YES"), D);
+  return f.shares === 20 && Math.abs(f.cost - 11) < 1e-9;
+})());
+ok("an order that crossed nothing is not a position", (() => {
+  try { fillOf(receipt([]), quoteFor("BUY_YES"), D); return false; }
+  catch (e) { return e instanceof EmptyFillError; }
+})());
+ok("the recorded multiplier pays out what the fill promised", (() => {
+  const f = fillOf(receipt([[0.4, 25]]), quoteFor("BUY_YES"), D);
+  const pos = { direction: "up" as const, stake: f.cost, marketId: "0x0" as `0x${string}`,
+                strike: 100, entryPrice: 100, payoutMultiplier: f.payoutMultiplier };
+  // Winning returns the shares: profit is shares minus what they cost.
+  return Math.abs(netResult(pos, "up") - (f.shares - f.cost)) < 1e-9;
+})());
 
 const ex = new SomniaMarkets({
   indexerUrl: "https://dev.smk.somnia.host/v1/graphql",
@@ -181,6 +268,33 @@ ok("a winning position pays the stake times the multiplier, less the stake",
    Math.abs(netResult(pos, "up") - 50 * 0.85) < 1e-9, `${netResult(pos, "up")}`);
 ok("a losing position loses exactly the stake", netResult(pos, "down") === -50);
 ok("a void is flat, not a loss", netResult(pos, null) === 0);
+
+// --- the live book a bet would actually cross ---
+for (const asset of TRADABLE_ASSETS) {
+  const rows = await ex.client.listLiveBinaryMarkets({ asset, intervalSec: APP_CADENCE_SECONDS, limit: 5 });
+  const picked = pickTradableMarket(rows.map(toDreamdexMarket), NOW);
+  if (!picked) { console.log(`   ${asset}: no live window to price a bet into`); continue; }
+
+  const decimals = picked.decimals;
+  const one = 10n ** BigInt(decimals);
+  const [live, params] = await Promise.all([
+    ex.client.getBinaryOrderBook(picked.poolAddress, { depth: 10, decimals }),
+    ex.client.getBinaryBookParams(picked.poolAddress),
+  ]);
+  const depth = live.yesAsks.length + live.yesBids.length;
+  console.log(`   ${asset}: book has ${live.yesAsks.length} asks / ${live.yesBids.length} bids;` +
+    ` tick ${descale(params.tickSize, decimals)}, lot ${descale(params.lotSize, decimals)},` +
+    ` min ${descale(params.minQuantity, decimals)}`);
+
+  ok(`${asset}: the pool reports a usable tick/lot grid`,
+     params.tickSize > 0n && params.lotSize > 0n);
+  const sized = quoteBinaryStakeOverBook(live, "BUY_YES", 10n * one, one, params);
+  // An empty book is the ordinary state on these short windows, and sizing
+  // nothing is the correct answer to it — not a failure.
+  ok(`${asset}: a 10 stake either sizes within itself or sizes nothing`,
+     sized === null || sized.escrow <= 10n * one,
+     sized === null ? `(nothing resting, depth ${depth})` : `${descale(sized.escrow, decimals)} for ${descale(sized.quantity, decimals)} shares`);
+}
 
 console.log(fail === 0 ? "\nALL PASS" : `\n${fail} FAILURE(S)`);
 process.exit(fail === 0 ? 0 : 1);

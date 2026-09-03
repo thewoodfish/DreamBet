@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    // viem and the markets SDK deal in bigint, which is ES2020 — and any browser
+    // that can run them already supports it, so there is nothing to down-level to.
+    "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
