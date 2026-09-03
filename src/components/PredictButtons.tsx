@@ -95,7 +95,7 @@ function PredictButton({
       whileTap={disabled ? undefined : { scale: 0.955 }}
       animate={{ opacity: disabled ? 0.4 : 1 }}
       transition={{ type: "spring", stiffness: 600, damping: 30 }}
-      className={`group relative isolate flex h-[88px] flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl bg-zinc-900 font-semibold outline-none ${
+      className={`group relative isolate flex h-[88px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-zinc-900 font-semibold outline-none ${
         isUp ? "shadow-glow-up" : "shadow-glow-down"
       }`}
     >
@@ -115,11 +115,11 @@ function PredictButton({
         width={arrow.width}
         height={arrow.height}
         priority
-        className="h-10 w-auto"
+        className="h-12 w-auto shrink-0"
       />
 
-      <span className="flex flex-col items-center gap-0.5">
-        <span className="text-[15px] tracking-tight text-white">
+      <span className="flex flex-col items-start gap-0.5">
+        <span className="whitespace-nowrap text-[15px] tracking-tight text-white">
           {isUp ? "Predict UP" : "Predict DOWN"}
         </span>
         <span

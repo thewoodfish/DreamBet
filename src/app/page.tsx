@@ -13,8 +13,10 @@ import { PriceWidget } from "@/components/PriceWidget";
 import { SettlementOverlay } from "@/components/SettlementOverlay";
 import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
+import { useCollateralBalance } from "@/hooks/useCollateralBalance";
 import { useEventWindow, windowSettleAt } from "@/hooks/useEventWindow";
 import { usePriceFeed } from "@/hooks/usePriceFeed";
+import { useDreamAccount } from "@/lib/account";
 import {
   DEFAULT_ASSET,
   getAsset,
@@ -33,7 +35,8 @@ import {
   type RoundState,
 } from "@/lib/round";
 
-/** Mock account — swapped for the Privy embedded wallet in Step 3. */
+/** Stand-in identity for when no wallet layer is configured, so the shell stays
+    previewable without a Privy app id. */
 const MOCK_WALLET = "0x7A3f9C21b6E8d0F45aA1c7Bd93E2f80C1D4b6a5E";
 const MOCK_BALANCE = 1_248.55;
 
@@ -52,6 +55,11 @@ export default function Home() {
   const pool = useMemo(() => poolSnapshot(symbol), [symbol]);
   const feed = usePriceFeed(asset);
   const eventWindow = useEventWindow();
+
+  const account = useDreamAccount();
+  const collateral = useCollateralBalance(account.address);
+  // Real balance once there is a wallet to read; the mock figure otherwise.
+  const balance = account.isMock ? MOCK_BALANCE : collateral.value;
 
   // The line a new bet would settle against — the next window's once the
   // current one locks. Shared by every player, so UP and DOWN are opposites.
@@ -162,7 +170,7 @@ export default function Home() {
         />
 
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <TopBar address={MOCK_WALLET} balance={MOCK_BALANCE} />
+          <TopBar balance={balance} fallbackAddress={MOCK_WALLET} />
           <StatsStrip
             stats={MOCK_STATS}
             onOpenRecord={() => {

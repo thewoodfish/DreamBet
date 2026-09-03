@@ -11,10 +11,8 @@ interface AssetSelectorProps {
 
 export function AssetSelector({ selected, onSelect }: AssetSelectorProps) {
   return (
-    // Mirrors the price card's box model — mx-5 to the card's margin, px-5 to
-    // the chart's own padding — so the pills sit on the same rule as the trend
-    // line. scroll-px-5 holds that rule once the row has been scrolled.
-    <div className="no-scrollbar mx-5 mt-3 flex snap-x snap-mandatory scroll-px-5 gap-2 overflow-x-auto px-5 pb-1">
+    // mx-5 puts the row on the same page margin as the price card below it.
+    <div className="no-scrollbar mx-5 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
       {ASSETS.map((asset) => {
         const active = asset.symbol === selected;
         return (
