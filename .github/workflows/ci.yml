@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # The live venue check is worth a daily look even when nobody pushes: it is
+  # how a change in Somnia's own behaviour surfaces before a user finds it.
+  schedule:
+    - cron: "0 9 * * *"
+
+# A second push supersedes the first; there is no value in finishing a build
+# for a commit that is already behind.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Types, lint, checks, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` honours .npmrc, which sets legacy-peer-deps for the Privy /
+      # viem optional-peer conflict documented there.
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      # Stake sizing, fill accounting, payout maths and the challenge parser.
+      # Deterministic and offline, so a failure here is always this repo's.
+      - name: Verify economics and challenge links
+        run: npm run verify
+
+      # No NEXT_PUBLIC_* are set here on purpose: the app has to build and run
+      # without a Privy id, a bot, or a Mini App short name, and this is what
+      # keeps that true.
+      - name: Build
+        run: npm run build
+
+  venue:
+    name: Live venue check (informational)
+    runs-on: ubuntu-latest
+    # Reports, never gates. Every assertion past the pure section is about a
+    # third-party testnet: its indexer times out, its oracle goes stale, and it
+    # stops rolling 15m windows. None of that is a reason to block a merge, and
+    # a red X for it would only teach people to ignore red Xs.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify against the live Shannon deployment
+        run: npm run verify:dreamdex

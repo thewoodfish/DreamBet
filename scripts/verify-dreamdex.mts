@@ -14,6 +14,20 @@ const ok = (label: string, cond: boolean, extra = "") => {
   console.log(`${cond ? "PASS" : "FAIL"}  ${label}${extra ? "  " + extra : ""}`);
 };
 
+const finish = () => {
+  console.log(fail === 0 ? "\nALL PASS" : `\n${fail} FAILURE(S)`);
+  process.exit(fail === 0 ? 0 : 1);
+};
+
+/**
+ * Everything below the pure section talks to a live third-party venue, and so
+ * reports on Somnia's health as much as on this code: its indexer times out,
+ * its oracle goes stale, and its 15m series stops rolling — none of which is a
+ * regression here. `--pure` stops before any of that, which is what CI gates
+ * on; the full run is how you check the app against the real thing.
+ */
+const PURE_ONLY = process.argv.includes("--pure");
+
 // --- stake sizing and fills: pure, and first, so they still report when the
 // --- indexer is unreachable ---
 const D = 6;
@@ -161,6 +175,8 @@ ok("a void is neither a win nor a loss in the copy", (() => {
 })());
 ok("an anonymous player is still named something",
    betText({ ...dare, from: null }, "5.00", "tUSDC").startsWith("🔥 Someone"));
+
+if (PURE_ONLY) finish();
 
 const ex = new SomniaMarkets({
   indexerUrl: "https://dev.smk.somnia.host/v1/graphql",
@@ -361,5 +377,4 @@ for (const asset of TRADABLE_ASSETS) {
      sized === null ? `(nothing resting, depth ${depth})` : `${descale(sized.escrow, decimals)} for ${descale(sized.quantity, decimals)} shares`);
 }
 
-console.log(fail === 0 ? "\nALL PASS" : `\n${fail} FAILURE(S)`);
-process.exit(fail === 0 ? 0 : 1);
+finish();

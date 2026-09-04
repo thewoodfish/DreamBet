@@ -40,16 +40,29 @@ still prices real markets — it just has nothing to sign with, and says so.
 
 Testnet tUSDC and STT for gas come from the SomniaHacks faucet.
 
-## Verify against the live venue
+## Checks
 
 ```bash
-npm run verify:dreamdex
+npm run verify           # offline and deterministic — what CI gates on
+npm run verify:dreamdex  # the above, plus the live Shannon deployment
 ```
 
-Checks the assumptions this app is built on — strike scaling, window shape,
-payout economics, stake sizing, fill accounting and settlement direction —
-against the live Shannon deployment. The pure economics run before the network
-is touched, so they still report when the indexer is down.
+`verify` covers the assumptions this app's own code makes: payout economics,
+stake sizing over a book, fill accounting, settlement direction and the
+challenge-link parser. No network, so a failure is always this repo's.
+
+`verify:dreamdex` adds strike scaling, window shape, oracle prints and live
+book depth read off Somnia's Shannon testnet. Those assertions are about a
+third-party venue that times out, goes stale and stops rolling windows on its
+own schedule — real information, but not a regression here, which is why CI
+runs them without gating on them.
+
+## Deploying
+
+Telegram hosts nothing — a Mini App is a URL in a webview — so deployment is
+your host's, and pushing to `main` is the whole release process. See
+[DEPLOYING.md](DEPLOYING.md) for BotFather registration, the build-time env
+vars, and how to test inside Telegram.
 
 ## Architecture
 
