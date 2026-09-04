@@ -19,12 +19,12 @@ Any HTTPS host with a real certificate works; Telegram refuses self-signed and
 refuses plain HTTP. Vercel is the least friction for Next.js — import the repo,
 accept the defaults, deploy.
 
-Worth knowing: both routes build as `○ (Static)`. Nothing here needs a Node
-server at runtime, so Cloudflare Pages, Netlify or any static host would serve
-it too, given `output: "export"` in `next.config.mjs`.
+Worth knowing: the screens build as `○ (Static)`, but `/api/fund` builds as
+`ƒ (Dynamic)` and needs a Node runtime — it holds the gas sponsor's key. A
+static export would drop that route silently, and the first thing anyone would
+notice is players unable to place their first bet.
 
-Set these in the host's environment (all four are public by design — they ship
-to the browser):
+These are public by design — they ship to the browser:
 
 | Variable | Value |
 | --- | --- |
@@ -36,6 +36,19 @@ to the browser):
 **These are inlined at build time, not read at runtime.** Next bakes every
 `NEXT_PUBLIC_*` into the bundle, so changing one requires a rebuild — a restart
 will not pick it up.
+
+And these are server-only. The prefix is the whole difference: a
+`NEXT_PUBLIC_` in front of the first one would publish the sponsor's key to
+every player.
+
+| Variable | Value |
+| --- | --- |
+| `GAS_SPONSOR_PRIVATE_KEY` | Key of the wallet paying everyone's gas. Fund the address with STT |
+| `TELEGRAM_BOT_TOKEN` | From BotFather. Without it, `/api/fund` drips to any address that asks |
+| `GAS_SPONSOR_DRIP_STT` | Optional. STT per player, default `0.06` |
+
+`GET /api/fund` reports the sponsor's address, its balance and how many players
+are left in it — the one number to check before a demo.
 
 ### 2. Register the Mini App with BotFather
 
