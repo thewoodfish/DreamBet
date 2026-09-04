@@ -61,6 +61,12 @@ export interface Pulse {
   typicalMovePct: number | null;
   /** The line's distance expressed in minutes of typical movement. */
   minutesOfMovement: number | null;
+  /**
+   * The line's distance as a fraction of the window's remaining reach, signed
+   * towards whichever side is ahead. 1 is the edge of what the price normally
+   * covers in the time left; negative means DOWN is the side in front.
+   */
+  reach: number | null;
   /** Which side is currently winning, if the line is known. */
   leader: Direction | null;
   closeness: Closeness;
@@ -132,24 +138,44 @@ export function minutesOfMovement(
 }
 
 /**
- * Whether the line is within reach in the time that is left.
+ * How far the line is as a fraction of how far the price can still travel.
  *
- * The comparison is the whole point: 0.05% means nothing on its own, and means
+ * This one number is the whole panel: 0.05% means nothing on its own, and means
  * a great deal once you know the asset covers that in a minute and the window
- * has nine of them to run.
+ * has nine of them to run. Below 1 the line is inside the window's reach; above
+ * it, the price would have to move unusually hard to get back.
  */
+export function reachRatio(
+  minutes: number | null,
+  secondsLeft: number
+): number | null {
+  if (minutes === null || secondsLeft <= 0) return null;
+  const minutesLeft = secondsLeft / 60;
+  if (minutesLeft <= 0) return null;
+  return minutes / minutesLeft;
+}
+
+/** Where a reach ratio falls, in the words the panel puts on it. */
+export function classifyReach(ratio: number | null): Closeness {
+  if (ratio === null) return "unknown";
+  if (ratio <= COIN_FLIP_REACH) return "coin-flip";
+  if (ratio <= 1) return "leaning";
+  return "clear";
+}
+
+/**
+ * Inside this fraction of the window's reach, the line is close enough that
+ * calling either side would be inventing confidence. Drawn as the bright core
+ * of the reach track, so the words and the picture cannot disagree.
+ */
+export const COIN_FLIP_REACH = 0.35;
+
+/** Whether the line is within reach in the time that is left. */
 export function closeness(
   minutes: number | null,
   secondsLeft: number
 ): Closeness {
-  if (minutes === null || secondsLeft <= 0) return "unknown";
-  const minutesLeft = secondsLeft / 60;
-  if (minutesLeft <= 0) return "unknown";
-
-  const ratio = minutes / minutesLeft;
-  if (ratio <= 0.35) return "coin-flip";
-  if (ratio <= 1) return "leaning";
-  return "clear";
+  return classifyReach(reachRatio(minutes, secondsLeft));
 }
 
 /**
@@ -214,7 +240,8 @@ export function readPulse(input: PulseInput): Pulse {
   const distance = distancePct(input.price, input.boundary);
   const typical = typicalMovePct(input.history);
   const minutes = minutesOfMovement(distance, typical);
-  const how = closeness(minutes, input.secondsLeft);
+  const ratio = reachRatio(minutes, input.secondsLeft);
+  const how = classifyReach(ratio);
   const streak = outcomeStreak(input.recent);
   const leader = distance === null ? null : distance >= 0 ? "up" : "down";
 
@@ -222,6 +249,7 @@ export function readPulse(input: PulseInput): Pulse {
     distancePct: distance,
     typicalMovePct: typical,
     minutesOfMovement: minutes,
+    reach: ratio === null ? null : leader === "down" ? -ratio : ratio,
     leader,
     closeness: how,
     streak,
