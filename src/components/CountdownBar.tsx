@@ -43,7 +43,14 @@ function urgency(secondsLeft: number, locked: boolean) {
  * minutes left" at a glance, with the leading tick draining continuously so the
  * last seconds still feel live.
  */
-export function CountdownBar({ window }: { window: EventWindow }) {
+export function CountdownBar({
+  window,
+  stalled = false,
+}: {
+  window: EventWindow;
+  /** No window to count down to, and none coming imminently. */
+  stalled?: boolean;
+}) {
   const { ready, secondsLeft, progress, locked, windowSeconds } = window;
   const tone = urgency(secondsLeft, locked);
   // One tick per minute of the contract's own window, so the bar reads as time
@@ -80,6 +87,10 @@ export function CountdownBar({ window }: { window: EventWindow }) {
               <span className="h-1 w-1 animate-pulse-ring rounded-full bg-current" />
               {locked ? "Settling" : "Open"}
             </span>
+          ) : stalled ? (
+            <span className="rounded-md bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+              Paused
+            </span>
           ) : (
             <span className="h-4 w-14 animate-pulse rounded bg-zinc-800" />
           )}
@@ -98,6 +109,17 @@ export function CountdownBar({ window }: { window: EventWindow }) {
                 {locked ? "settling now" : "left to predict"}
               </span>
             </>
+          ) : stalled ? (
+            // A skeleton that never resolves reads as a broken app. This is a
+            // waiting state, and it should look like one.
+            <>
+              <span className="tnum font-mono text-[34px] font-bold leading-none tracking-tight text-zinc-700">
+                --:--
+              </span>
+              <span className="text-[11px] font-medium text-zinc-500">
+                waiting for the next window
+              </span>
+            </>
           ) : (
             <span className="h-[34px] w-32 animate-pulse rounded-lg bg-zinc-800" />
           )}
@@ -109,7 +131,7 @@ export function CountdownBar({ window }: { window: EventWindow }) {
       <div className="relative flex gap-[3px] px-5 pb-2">
         {Array.from({ length: segments }, (_, i) => {
           // Segments drain right to left; only the leading one is partial.
-          const fill = ready ? Math.min(Math.max(remaining - i, 0), 1) : 1;
+          const fill = ready ? Math.min(Math.max(remaining - i, 0), 1) : stalled ? 0 : 1;
           return (
             <span
               key={i}

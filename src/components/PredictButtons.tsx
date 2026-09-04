@@ -18,6 +18,8 @@ interface PredictButtonsProps {
   quote: MarketQuote;
   /** A window is open and has a strike, so a bet can actually be placed. */
   bettable: boolean;
+  /** The venue has stopped opening windows — not a roll between two of them. */
+  stalled: boolean;
   /** Still finding the window — say nothing rather than "closed". */
   loading: boolean;
   /** Window is open but the oracle has yet to post the line it settles against. */
@@ -29,6 +31,7 @@ export function PredictButtons({
   quote,
   bettable,
   loading,
+  stalled,
   awaitingStrike,
   onPredict,
 }: PredictButtonsProps) {
@@ -59,12 +62,16 @@ export function PredictButtons({
         </Notice>
       )}
 
-      {/* Windows roll continuously, so this is a gap of seconds between one
-          closing and the next opening. */}
+      {/* Windows roll continuously, so this is normally a gap of seconds
+          between one closing and the next opening — but dreamDEX's testnet
+          deployment also goes quiet for long stretches, and "shortly" said
+          through half an hour of nothing is a promise the app cannot keep. */}
       {!loading && !awaitingStrike && !bettable && (
         <Notice>
           <Lock className="h-3 w-3 shrink-0 text-zinc-500" strokeWidth={2.4} />
-          This round is closing — the next window opens shortly
+          {stalled
+            ? "dreamDEX has no window open right now. Nothing to fix your end — this screen goes live the moment one opens."
+            : "This round is closing — the next window opens shortly"}
         </Notice>
       )}
 

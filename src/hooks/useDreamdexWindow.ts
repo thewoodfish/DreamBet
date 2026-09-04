@@ -23,6 +23,17 @@ const POLL_MS = 8_000;
 /** Enough of the board to find this asset's window without paging. */
 const PAGE_SIZE = 10;
 
+/**
+ * How long with nothing open before this stops reading as a roll between two
+ * windows and starts reading as a venue that has stopped rolling them.
+ *
+ * Windows change over in seconds, so a minute and a half of nothing is not a
+ * gap. dreamDEX's testnet deployment does go quiet for stretches — it has sat
+ * idle for half an hour at a time — and telling somebody the next window opens
+ * "shortly" through all of that is a promise the app cannot keep.
+ */
+const STALL_MS = 90_000;
+
 export interface DreamdexWindow {
   /** The window being traded, or null between one closing and the next opening. */
   market: DreamdexMarket | null;
@@ -38,6 +49,12 @@ export interface DreamdexWindow {
   quote: MarketQuote;
   /** True until the first response lands for this asset. */
   loading: boolean;
+  /**
+   * Nothing has been open long enough that the venue, not the clock, is the
+   * reason. Distinct from `market === null`, which is normal for seconds at a
+   * time as one window closes and the next opens.
+   */
+  stalled: boolean;
   error: boolean;
 }
 
@@ -53,6 +70,7 @@ export function useDreamdexWindow(asset: AssetSymbol): DreamdexWindow {
   const [market, setMarket] = useState<DreamdexMarket | null>(null);
   const [boundary, setBoundary] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stalled, setStalled] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -105,11 +123,26 @@ export function useDreamdexWindow(asset: AssetSymbol): DreamdexWindow {
     };
   }, [asset]);
 
+  // A window that is open clears the stall immediately; an empty board has to
+  // stay empty for a while before it counts as one. Polling sets the same null
+  // over and over, which React treats as no change, so this timer survives
+  // across polls and only restarts when something actually opens.
+  useEffect(() => {
+    if (market) {
+      setStalled(false);
+      return;
+    }
+
+    const id = setTimeout(() => setStalled(true), STALL_MS);
+    return () => clearTimeout(id);
+  }, [market, asset]);
+
   return {
     market,
     boundary,
     quote: quoteFromProbability(market?.lastProbability ?? null),
     loading,
+    stalled,
     error,
   };
 }

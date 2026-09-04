@@ -64,8 +64,13 @@ export default function Home() {
 
   // The contract's own window: which market, what it settles against, and what
   // the book is paying. Everything about the round is read from here.
-  const { market, boundary, quote, loading: marketLoading } =
-    useDreamdexWindow(symbol);
+  const {
+    market,
+    boundary,
+    quote,
+    loading: marketLoading,
+    stalled: marketStalled,
+  } = useDreamdexWindow(symbol);
   const eventWindow = useEventWindow(market);
 
   const telegram = useTelegram();
@@ -256,7 +261,7 @@ export default function Home() {
           {/* Sits between the identity block and the trading half, outside the
               scroll flow: urgency drives the tap, so the clock can never be
               what scrolls out of view. */}
-          <CountdownBar window={eventWindow} />
+          <CountdownBar window={eventWindow} stalled={marketStalled} />
           <AssetSelector selected={symbol} onSelect={handleSelectAsset} />
 
           {/* The price card flexes to absorb slack, so the layout stays tight
@@ -296,6 +301,7 @@ export default function Home() {
                   quote={quote}
                   bettable={bettable}
                   loading={marketLoading}
+                  stalled={marketStalled}
                   awaitingStrike={market !== null && boundary === null}
                   onPredict={handlePredict}
                 />
