@@ -1,11 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { PrivyProvider } from "@privy-io/react-auth";
+import { isTMA } from "@telegram-apps/sdk-react";
 import { NETWORK } from "@/lib/dreamdex/config";
 import { MockAccountBridge, PrivyAccountBridge } from "@/lib/account";
 import { TelegramProvider } from "@/lib/telegram";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+
+/**
+ * Login methods that can actually succeed where the app is running.
+ *
+ * Telegram's in-app webview has no extensions and so no injected provider —
+ * there is no MetaMask inside Telegram to connect to, and picking it is a dead
+ * end rather than a slow path. Which is the whole reason this product is built
+ * on an embedded wallet: the Telegram identity is the login, and the wallet
+ * appears behind it.
+ *
+ * In a normal browser an external wallet is a real option, so it stays offered
+ * there.
+ */
+function loginMethodsFor(inTelegram: boolean) {
+  return inTelegram
+    ? (["telegram", "email"] as const)
+    : (["telegram", "email", "wallet"] as const);
+}
 
 /**
  * Wallet onboarding for a Telegram Mini App. The whole point is that a user
@@ -17,6 +37,22 @@ const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
  * account — the UI stays previewable and only the signing paths are missing.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
+  /**
+   * Read once, synchronously, before Privy mounts: `loginMethods` is consumed
+   * at mount, so learning this from an effect would be a frame too late. The
+   * server cannot know it, and the value only changes what the login modal
+   * offers rather than any rendered markup, so the two renders disagreeing on
+   * it costs nothing.
+   */
+  const [inTelegram] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return isTMA();
+    } catch {
+      return false;
+    }
+  });
+
   // Telegram wraps everything, and independently of the wallet: the launch
   // context is what says who arrived and which challenge brought them, and that
   // is true whether or not there is anything to sign with.
@@ -33,7 +69,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <PrivyProvider
         appId={PRIVY_APP_ID}
         config={{
-          loginMethods: ["telegram", "email", "wallet"],
+          loginMethods: [...loginMethodsFor(inTelegram)],
           appearance: {
             theme: "dark",
             accentColor: "#8b5cf6",
