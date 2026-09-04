@@ -23,6 +23,7 @@ export interface Asset {
 const ASSET_META: Omit<Asset, "pair">[] = [
   { symbol: "BTC", name: "Bitcoin", decimals: 2 },
   { symbol: "ETH", name: "Ethereum", decimals: 2 },
+  { symbol: "SOL", name: "Solana", decimals: 2 },
 ];
 
 export const ASSETS: Asset[] = ASSET_META.map((asset) => ({

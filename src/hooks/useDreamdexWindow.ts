@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { exchange } from "@/lib/dreamdex/client";
 import { TRADED_CADENCES } from "@/lib/dreamdex/config";
 import {
+  LIVENESS_STALL_MS,
   marketBoundary,
   pickTradableMarket,
   quoteFromProbability,
@@ -31,8 +32,11 @@ const PAGE_SIZE = 10;
  * gap. dreamDEX's testnet deployment does go quiet for stretches — it has sat
  * idle for half an hour at a time — and telling somebody the next window opens
  * "shortly" through all of that is a promise the app cannot keep.
+ *
+ * Shared with the pill row, which has to reach the same verdict about this
+ * asset as the countdown does, or the screen contradicts itself.
  */
-const STALL_MS = 90_000;
+const STALL_MS = LIVENESS_STALL_MS;
 
 export interface DreamdexWindow {
   /** The window being traded, or null between one closing and the next opening. */

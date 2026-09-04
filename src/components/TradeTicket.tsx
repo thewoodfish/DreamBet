@@ -18,7 +18,7 @@ import type { DreamdexMarket } from "@/lib/dreamdex/market";
 import type { StakeQuote } from "@/lib/dreamdex/book";
 import type { Asset } from "@/lib/assets";
 import type { Direction } from "@/lib/round";
-import { formatDuration, formatUsd } from "@/lib/format";
+import { formatDuration, formatUsd, windowLabel } from "@/lib/format";
 
 /** Sizes a punter reaches for without thinking. `Max` is whatever they hold. */
 const QUICK_STAKES = [5, 10, 25] as const;
@@ -139,8 +139,17 @@ export function TradeTicket({
               <span className="block text-[17px] font-semibold tracking-tight">
                 {asset.symbol} goes {isUp ? "UP" : "DOWN"}
               </span>
+              {/* Which window, then how long is left in it. The venue rolls
+                  cadences from a minute to an hour and the app takes whichever
+                  is open, so the length is not something a player can assume —
+                  and this is the last screen before their money is committed
+                  to it. */}
               <span className="tnum block text-[11px] font-medium text-zinc-500">
-                Settles in {formatDuration(secondsLeft)}
+                <span className="font-semibold text-zinc-300">
+                  {windowLabel(market.windowSeconds)} window
+                </span>
+                {" · settles in "}
+                {formatDuration(secondsLeft)}
               </span>
             </span>
           </div>

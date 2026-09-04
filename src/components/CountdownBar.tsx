@@ -2,7 +2,7 @@
 
 import { Lock, Timer } from "lucide-react";
 import type { EventWindow } from "@/hooks/useEventWindow";
-import { formatDuration } from "@/lib/format";
+import { countdownTicks, formatDuration, windowLabel } from "@/lib/format";
 
 /** Fallback tick count before a window is known, so the bar has a resting shape. */
 const DEFAULT_SEGMENTS = 15;
@@ -53,11 +53,11 @@ export function CountdownBar({
 }) {
   const { ready, secondsLeft, progress, locked, windowSeconds } = window;
   const tone = urgency(secondsLeft, locked);
-  // One tick per minute of the contract's own window, so the bar reads as time
-  // rather than as a ratio — and re-reads correctly if the venue's cadence
-  // ever changes under us.
+  // The fuse's tick count comes from the window's own length, so an hourly
+  // window is not drawn as sixty hairlines and a one-minute one is not a single
+  // undivided bar.
   const segments = ready
-    ? Math.max(Math.round(windowSeconds / 60), 1)
+    ? countdownTicks(windowSeconds, DEFAULT_SEGMENTS)
     : DEFAULT_SEGMENTS;
   const remaining = (1 - progress) * segments;
 
@@ -71,13 +71,18 @@ export function CountdownBar({
 
       <div className="relative px-5 pb-2.5 pt-2">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          {/* Which window this is, in the words the share card uses. The app
+              trades whichever cadence the venue has open, so this is the
+              difference between a bet that settles in five minutes and one that
+              settles in an hour — it cannot be left implied. Brighter than a
+              label of this size would normally be, for the same reason. */}
+          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300">
             {locked ? (
               <Lock className="h-3 w-3" strokeWidth={2.6} />
             ) : (
               <Timer className="h-3 w-3" strokeWidth={2.6} />
             )}
-            {segments}m Event Window
+            {ready ? `${windowLabel(windowSeconds)} window` : "Event window"}
           </span>
 
           {ready ? (

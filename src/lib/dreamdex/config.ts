@@ -102,11 +102,17 @@ export const APP_CADENCE_SECONDS = TRADED_CADENCES[0];
 export const PRICE_SERIES_CADENCE_SECONDS = 60;
 
 /**
- * Event contracts exist for these assets only. The mock feed also carried SOMI,
- * which has no binary market — it can stay as a price feed but must never be
- * offered as something to bet on.
+ * Assets DreamBet offers. dreamDEX has listed binary markets for all three, but
+ * it does not roll them equally: BTC and ETH are rolled together on every
+ * cadence, while SOL's only series is 5-minute and its creator has been stopped
+ * since 02:20 UTC on 4 Sep 2026.
+ *
+ * That is a reason to show SOL as paused, not a reason to hide it — the pill row
+ * reads its liveness per asset (`useAssetLiveness`), so a dark asset is visibly
+ * dark rather than a tab that looks fine until it is tapped. SOMI stays out
+ * entirely: one market in its whole history is not a series.
  */
-export const TRADABLE_ASSETS = ["BTC", "ETH"] as const;
+export const TRADABLE_ASSETS = ["BTC", "ETH", "SOL"] as const;
 export type TradableAsset = (typeof TRADABLE_ASSETS)[number];
 
 export function isTradableAsset(symbol: string): symbol is TradableAsset {

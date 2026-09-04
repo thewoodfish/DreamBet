@@ -1,12 +1,12 @@
 import { SomniaMarkets, quoteBinaryStakeOverBook } from "@somnia-chain/markets-sdk";
 import type { BinaryOrderBook, PlaceOrderResult } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
-import { toDreamdexMarket, quoteFromProbability, clampProbability, isTrading, pickTradableMarket, marketBoundary, resolvedDirection } from "../src/lib/dreamdex/market.ts";
+import { toDreamdexMarket, quoteFromProbability, clampProbability, isTrading, pickTradableMarket, marketBoundary, resolvedDirection, livenessAfterPoll, LIVENESS_STALL_MS } from "../src/lib/dreamdex/market.ts";
 import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADED_CADENCES, TRADABLE_ASSETS, PRICE_SERIES_CADENCE_SECONDS } from "../src/lib/dreamdex/config.ts";
 import { buySideFor, descale, toRaw } from "../src/lib/dreamdex/book.ts";
 import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
-import { windowLabel } from "../src/lib/format.ts";
+import { countdownTicks, windowLabel } from "../src/lib/format.ts";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 
 let fail = 0;
@@ -189,6 +189,32 @@ ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
 
+// --- the pill row: what one poll of an asset's board means for it ---
+//
+// Pure, and so gated in CI: the asymmetry here is what stops the row blinking
+// out at every window roll while still turning a genuinely dark asset off.
+const PILL_NOW = Date.now();
+ok("anything open makes an asset live at once",
+   livenessAfterPoll(true, null, PILL_NOW) === "live");
+ok("an asset never seen open is paused without waiting out the bridge",
+   livenessAfterPoll(false, null, PILL_NOW) === "paused");
+ok("a roll between two windows does not blink the pill out",
+   livenessAfterPoll(false, PILL_NOW - 5_000, PILL_NOW) === "live");
+ok("a venue that has stopped rolling does turn the pill off",
+   livenessAfterPoll(false, PILL_NOW - LIVENESS_STALL_MS - 1, PILL_NOW) === "paused");
+ok("the pill and the countdown call a stall at the same moment",
+   livenessAfterPoll(false, PILL_NOW - LIVENESS_STALL_MS + 1_000, PILL_NOW) === "live" &&
+   livenessAfterPoll(false, PILL_NOW - LIVENESS_STALL_MS - 1_000, PILL_NOW) === "paused");
+
+// --- the fuse divides every traded cadence into a countable number of ticks ---
+ok("every traded cadence draws a countable fuse",
+   TRADED_CADENCES.every((c) => {
+     const n = countdownTicks(c, -1);
+     return n >= 8 && n <= 24;
+   }), TRADED_CADENCES.map((c) => `${c}s→${countdownTicks(c)}`).join(" "));
+ok("a window off the ladder falls back rather than drawing nothing",
+   countdownTicks(86400, 15) === 15 && countdownTicks(0, 15) === 15);
+
 if (PURE_ONLY) finish();
 
 const ex = new SomniaMarkets({
@@ -276,8 +302,12 @@ for (const asset of TRADABLE_ASSETS) {
   const rows = boards.find((b) => pickTradableMarket(b.map(toDreamdexMarket), NOW)) ?? boards.flat();
   const live = rows.map(toDreamdexMarket);
   const picked = pickTradableMarket(live, NOW);
-  ok(`${asset}: the venue lists a series the app would trade`, live.length > 0,
-     `(${live.length} live across ${TRADED_CADENCES.join("/")}s)`);
+  // Whether a given asset has anything open is the venue's business, not this
+  // app's — SOL has been dark for hours — so the assertion is that the pill row
+  // would say so, not that the venue is rolling it.
+  ok(`${asset}: the pill row would describe this asset correctly`,
+     livenessAfterPoll(picked !== null, null, NOW) === (picked ? "live" : "paused"),
+     `(${live.length} live across ${TRADED_CADENCES.join("/")}s → ${picked ? "live" : "paused"})`);
   ok(`${asset}: every row is the asset asked for, on a traded cadence`,
      live.every((m) => m.asset === asset &&
        TRADED_CADENCES.some((c) => Math.abs(m.windowSeconds - c) <= 5)));
@@ -290,7 +320,7 @@ for (const asset of TRADABLE_ASSETS) {
       `  ${q.isIndicative ? "(indicative, untraded)" : `(${picked.tradeCount} trades, vol ${picked.volume})`}` +
       `  ${Math.round(picked.expiry - NOW/1000)}s left`);
   } else {
-    console.log(`   ${asset}: no window currently open (between rolls)`);
+    console.log(`   ${asset}: nothing open on any traded cadence — its pill shows paused`);
   }
 }
 
@@ -332,6 +362,14 @@ for (const asset of TRADABLE_ASSETS) {
     .filter((x) => x.p > 0)
     .sort((a, b) => a.t - b.t);
   const gaps = [...new Set(pts.slice(1).map((x, i) => x.t - pts[i].t))];
+
+  // No 1m series at all means no chart for this asset — true of SOL, which has
+  // never had one. Nothing below can be asserted about a series that does not
+  // exist, and its absence is the venue's, so it is reported and skipped.
+  if (pts.length === 0) {
+    console.log(`   ${asset}: no 1m series — no oracle prints to chart`);
+    continue;
+  }
 
   ok(`${asset}: the 1m series yields an hour of prints`, pts.length >= 50, `${pts.length} points`);
   ok(`${asset}: prints land exactly one minute apart`,

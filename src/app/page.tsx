@@ -17,6 +17,7 @@ import { ShareSheet, type ShareSubject } from "@/components/ShareSheet";
 import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
 import { TradeTicket } from "@/components/TradeTicket";
+import { useAssetLiveness, type AssetLivenessMap } from "@/hooks/useAssetLiveness";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
 import { recordBet } from "@/lib/board/client";
 import { useDreamdexWindow } from "@/hooks/useDreamdexWindow";
@@ -73,6 +74,24 @@ export default function Home() {
     stalled: marketStalled,
   } = useDreamdexWindow(symbol);
   const eventWindow = useEventWindow(market);
+
+  // Whether each pill has anything behind it. Swept across all assets on a
+  // slower loop than the selected asset's own window, which is polled harder
+  // and is the better answer for the pill the user is already on — so that one
+  // is taken from the window hook, and the pill row cannot disagree with the
+  // countdown sitting directly above it.
+  const polledLiveness = useAssetLiveness();
+  const liveness: AssetLivenessMap = useMemo(
+    () => ({
+      ...polledLiveness,
+      [symbol]: market
+        ? "live"
+        : marketStalled
+          ? "paused"
+          : polledLiveness[symbol],
+    }),
+    [polledLiveness, symbol, market, marketStalled]
+  );
 
   const telegram = useTelegram();
   const account = useDreamAccount();
@@ -282,7 +301,11 @@ export default function Home() {
               scroll flow: urgency drives the tap, so the clock can never be
               what scrolls out of view. */}
           <CountdownBar window={eventWindow} stalled={marketStalled} />
-          <AssetSelector selected={symbol} onSelect={handleSelectAsset} />
+          <AssetSelector
+            selected={symbol}
+            liveness={liveness}
+            onSelect={handleSelectAsset}
+          />
 
           {/* The price card flexes to absorb slack, so the layout stays tight
               from an iPhone SE up to a Pro Max without dead space. */}

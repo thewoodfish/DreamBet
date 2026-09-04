@@ -62,3 +62,25 @@ export function windowLabel(seconds: number): string {
   const minutes = Math.max(Math.round(seconds / 60), 1);
   return `${minutes} min`;
 }
+
+/** Tick lengths a countdown bar will divide a window into, coarsest first. */
+const TICK_SECONDS = [300, 60, 30, 15, 5] as const;
+
+/**
+ * How many ticks to cut a window into on the countdown's fuse.
+ *
+ * One tick per minute was right while the app only ever traded 15-minute
+ * windows. It stopped being right once the app started trading whichever
+ * cadence is open: an hourly window becomes sixty hairlines, and a one-minute
+ * window becomes a single bar with nothing to count. So the fuse takes the
+ * coarsest tick that still leaves a countable number of them — roughly a dozen
+ * at every cadence — and the exact time remaining stays where it always was,
+ * in the digits above it.
+ */
+export function countdownTicks(windowSeconds: number, fallback = 15): number {
+  for (const tick of TICK_SECONDS) {
+    const count = Math.round(windowSeconds / tick);
+    if (count >= 8 && count <= 24) return count;
+  }
+  return fallback;
+}

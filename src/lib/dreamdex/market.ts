@@ -180,6 +180,40 @@ export function pickTradableMarket(
   );
 }
 
+/** How an asset reads in the pill row. */
+export type AssetLiveness = "unknown" | "live" | "paused";
+
+/**
+ * How long an asset that has gone empty keeps reading as live.
+ *
+ * Windows change over in seconds — on the 1-minute series, constantly — and a
+ * pill that blinked out at every roll would be unusable. This bridges the gap,
+ * and matches the stall the countdown applies to the selected asset so the two
+ * never contradict each other.
+ */
+export const LIVENESS_STALL_MS = 90_000;
+
+/**
+ * What one poll of an asset's board means for its pill.
+ *
+ * The asymmetry is the point: anything open makes an asset live at once, while
+ * an empty board only makes it paused after the bridge has elapsed — *unless*
+ * nothing has ever been seen open, in which case there is no roll to bridge and
+ * no reason to imply otherwise. That last case is what stops a genuinely dark
+ * asset from spending its first minute and a half looking tradeable.
+ */
+export function livenessAfterPoll(
+  tradable: boolean,
+  /** When this asset was last seen with a window open, in ms, or null if never. */
+  lastLiveAt: number | null,
+  nowMs: number,
+  stallMs: number = LIVENESS_STALL_MS
+): Exclude<AssetLiveness, "unknown"> {
+  if (tradable) return "live";
+  if (lastLiveAt === null) return "paused";
+  return nowMs - lastLiveAt < stallMs ? "live" : "paused";
+}
+
 /**
  * The line the window settles against, whichever way this market establishes
  * one. A fixed-strike market carries it directly; a reference market ("closes
