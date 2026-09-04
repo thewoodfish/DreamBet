@@ -83,13 +83,21 @@ export function challengeFromSearch(search: string): Challenge | null {
 
 /* --- The words that make somebody tap it --------------------------------- */
 
-/** A bet just placed. */
+/**
+ * A bet just placed.
+ *
+ * `window` is the length of the window it went into, not a constant: the app
+ * trades whichever cadence dreamDEX has open, so a card that always said "15
+ * mins" would be wrong about most bets and unfalsifiable to whoever received
+ * it.
+ */
 export function betText(
   challenge: Challenge,
   stake: string,
-  collateral: string
+  collateral: string,
+  window: string
 ): string {
-  return `🔥 ${who(challenge)} just bet ${stake} ${collateral} that ${challenge.symbol} goes ${side(challenge)} in the next 15 mins via #DreamBet. Take the other side:`;
+  return `🔥 ${who(challenge)} just bet ${stake} ${collateral} that ${challenge.symbol} goes ${side(challenge)} in the next ${window} via #DreamBet. Take the other side:`;
 }
 
 /**
@@ -102,13 +110,14 @@ export function resultText(
   net: string,
   won: boolean,
   voided: boolean,
-  collateral: string
+  collateral: string,
+  window: string
 ): string {
   if (voided) {
     return `${who(challenge)} called ${challenge.symbol} ${side(challenge)} on #DreamBet — the window voided. Running it back:`;
   }
   return won
-    ? `🔥 ${who(challenge)} just won ${net} ${collateral} calling ${challenge.symbol} ${side(challenge)} in 15 mins on #DreamBet. Think you can beat that?`
+    ? `🔥 ${who(challenge)} just won ${net} ${collateral} calling ${challenge.symbol} ${side(challenge)} in ${window} on #DreamBet. Think you can beat that?`
     : `${who(challenge)} called ${challenge.symbol} ${side(challenge)} on #DreamBet and missed it. Your turn:`;
 }
 

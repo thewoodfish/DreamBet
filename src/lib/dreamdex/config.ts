@@ -72,14 +72,26 @@ export const PROBABILITY_ONE = 1;
 export const WINDOW_SECONDS = [60, 300, 900, 3600, 14400, 86400] as const;
 
 /**
- * The cadence DreamBet trades. 15m is long enough that a group has time to
- * pile in after someone shares a bet, and short enough to settle inside a
- * single sitting.
+ * Cadences DreamBet will trade, in the order it wants them.
+ *
+ * 15m first, because it is long enough that a group has time to pile in after
+ * somebody shares a bet and short enough to settle inside one sitting. But this
+ * venue's market creators are intermittent — for stretches of an hour or more
+ * the only series still rolling is the hourly one — and an app that trades
+ * exactly one cadence is dark whenever that particular roller stops, however
+ * busy the rest of the board is.
+ *
+ * So the preference is a list, not a constant. A live 15m window always wins;
+ * failing that the app takes the next-best thing that actually exists, and says
+ * plainly how long the window it found runs for.
  *
  * Matched as a band by the indexer, not exactly — trading routinely opens a
  * second or two late, so a 15m series is indexed at 898s and 899s as well.
  */
-export const APP_CADENCE_SECONDS = 900;
+export const TRADED_CADENCES = [900, 300, 3600, 60] as const;
+
+/** The cadence DreamBet prefers, and trades whenever the venue offers it. */
+export const APP_CADENCE_SECONDS = TRADED_CADENCES[0];
 
 /**
  * The cadence the price chart is read from. Markets on the 1-minute series are

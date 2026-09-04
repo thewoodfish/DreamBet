@@ -45,3 +45,20 @@ export function formatDuration(totalSeconds: number): string {
     ? `${hours}:${pad(minutes)}:${pad(seconds)}`
     : `${minutes}:${pad(seconds)}`;
 }
+
+/**
+ * A window length as a player would say it — "15 min", "1 hour".
+ *
+ * The app trades whichever cadence the venue has open, so this is never a
+ * constant: the share card and the copy that leaves the app both have to name
+ * the window the bet was actually placed in, or the bet is misdescribed to
+ * everyone who reads it.
+ */
+export function windowLabel(seconds: number): string {
+  if (seconds >= 3600) {
+    const hours = Math.round(seconds / 3600);
+    return hours === 1 ? "1 hour" : `${hours} hours`;
+  }
+  const minutes = Math.max(Math.round(seconds / 60), 1);
+  return `${minutes} min`;
+}

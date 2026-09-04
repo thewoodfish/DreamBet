@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { exchange } from "@/lib/dreamdex/client";
-import { APP_CADENCE_SECONDS } from "@/lib/dreamdex/config";
+import { TRADED_CADENCES } from "@/lib/dreamdex/config";
 import {
   marketBoundary,
   pickTradableMarket,
@@ -83,14 +83,34 @@ export function useDreamdexWindow(asset: AssetSymbol): DreamdexWindow {
 
     async function read() {
       try {
-        const rows = await exchange.client.listLiveBinaryMarkets({
-          asset,
-          intervalSec: APP_CADENCE_SECONDS,
-          limit: PAGE_SIZE,
-        });
+        // Every cadence is asked at once and the answers ranked by preference
+        // afterwards, rather than walking the list until one hits. Asking in
+        // order would make the common case — the preferred window is open —
+        // the fast one and the empty case four sequential round trips, which
+        // is exactly backwards: the empty case is the one a player is sitting
+        // and staring at.
+        const boards = await Promise.all(
+          TRADED_CADENCES.map((intervalSec) =>
+            exchange.client
+              .listLiveBinaryMarkets({ asset, intervalSec, limit: PAGE_SIZE })
+              .catch(() => [])
+          )
+        );
         if (!live) return;
 
-        const picked = pickTradableMarket(rows.map(toDreamdexMarket), Date.now());
+        const now = Date.now();
+        let rows: (typeof boards)[number] = [];
+        let picked = null;
+
+        for (const board of boards) {
+          const candidate = pickTradableMarket(board.map(toDreamdexMarket), now);
+          if (candidate) {
+            rows = board;
+            picked = candidate;
+            break;
+          }
+        }
+
         setMarket(picked);
 
         // The opening print is a second query, so it is only worth making once

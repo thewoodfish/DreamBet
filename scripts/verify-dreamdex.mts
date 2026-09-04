@@ -2,10 +2,11 @@ import { SomniaMarkets, quoteBinaryStakeOverBook } from "@somnia-chain/markets-s
 import type { BinaryOrderBook, PlaceOrderResult } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import { toDreamdexMarket, quoteFromProbability, clampProbability, isTrading, pickTradableMarket, marketBoundary, resolvedDirection } from "../src/lib/dreamdex/market.ts";
-import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADABLE_ASSETS, PRICE_SERIES_CADENCE_SECONDS } from "../src/lib/dreamdex/config.ts";
+import { STRIKE_SCALE, APP_CADENCE_SECONDS, TRADED_CADENCES, TRADABLE_ASSETS, PRICE_SERIES_CADENCE_SECONDS } from "../src/lib/dreamdex/config.ts";
 import { buySideFor, descale, toRaw } from "../src/lib/dreamdex/book.ts";
 import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
+import { windowLabel } from "../src/lib/format.ts";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 
 let fail = 0;
@@ -161,20 +162,32 @@ ok("an oversized handle is capped rather than rendered whole", (() => {
 // The share copy has to name the right side and the right money, because it is
 // the only part of this product that strangers ever read.
 ok("the bet copy names the side taken and invites the other",
-   betText(dare, "50.00", "tUSDC").includes("BTC goes UP") &&
-   betText(dare, "50.00", "tUSDC").includes("50.00 tUSDC") &&
-   betText(dare, "50.00", "tUSDC").includes("other side"));
+   betText(dare, "50.00", "tUSDC", "15 min").includes("BTC goes UP") &&
+   betText(dare, "50.00", "tUSDC", "15 min").includes("50.00 tUSDC") &&
+   betText(dare, "50.00", "tUSDC", "15 min").includes("other side"));
 ok("a win brags and a miss does not", (() => {
-  const won = resultText(dare, "27.00", true, false, "tUSDC");
-  const lost = resultText(dare, "50.00", false, false, "tUSDC");
+  const won = resultText(dare, "27.00", true, false, "tUSDC", "15 min");
+  const lost = resultText(dare, "50.00", false, false, "tUSDC", "15 min");
   return won.includes("just won 27.00 tUSDC") && !lost.includes("won") && lost.includes("missed");
 })());
 ok("a void is neither a win nor a loss in the copy", (() => {
-  const void_ = resultText(dare, "0.00", false, true, "tUSDC");
+  const void_ = resultText(dare, "0.00", false, true, "tUSDC", "15 min");
   return void_.includes("voided") && !void_.includes("missed") && !void_.includes("won");
 })());
 ok("an anonymous player is still named something",
-   betText({ ...dare, from: null }, "5.00", "tUSDC").startsWith("🔥 Someone"));
+   betText({ ...dare, from: null }, "5.00", "tUSDC", "15 min").startsWith("🔥 Someone"));
+
+// The app trades whichever cadence is open, so the card has to name that one —
+// a bet into an hourly window described as "15 mins" is a lie to everybody who
+// reads it, and the reader cannot check.
+ok("the copy names the window the bet actually went into", (() => {
+  const hourly = betText(dare, "50.00", "tUSDC", windowLabel(3600));
+  const fast = betText(dare, "50.00", "tUSDC", windowLabel(300));
+  return hourly.includes("next 1 hour") && fast.includes("next 5 min");
+})());
+ok("window lengths read the way a player would say them",
+   windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
+   windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
 
 if (PURE_ONLY) finish();
 
@@ -249,18 +262,25 @@ ok("higher probability always means smaller payout",
    [0.1,0.3,0.5,0.7,0.9].every((p,i,a) => i===0 || quoteFromProbability(p).payoutUp < quoteFromProbability(a[i-1]).payoutUp));
 
 // --- the window the app would actually trade, per asset ---
+//
+// The app prefers 15m and falls back through the other cadences, so this asks
+// the same way. Asserting a live 15m series would fail whenever this venue's
+// short-cadence creators are stopped — which is most of the time, and is a
+// fact about their testnet rather than a regression here.
 for (const asset of TRADABLE_ASSETS) {
-  const rows = await ex.client.listLiveBinaryMarkets({
-    asset,
-    intervalSec: APP_CADENCE_SECONDS,
-    limit: 10,
-  });
+  const boards = await Promise.all(
+    TRADED_CADENCES.map((intervalSec) =>
+      ex.client.listLiveBinaryMarkets({ asset, intervalSec, limit: 10 })
+    )
+  );
+  const rows = boards.find((b) => pickTradableMarket(b.map(toDreamdexMarket), NOW)) ?? boards.flat();
   const live = rows.map(toDreamdexMarket);
   const picked = pickTradableMarket(live, NOW);
-  ok(`${asset}: the venue lists a ${APP_CADENCE_SECONDS}s series`, live.length > 0,
-     `(${live.length} live)`);
-  ok(`${asset}: every row is the asset and cadence asked for`,
-     live.every((m) => m.asset === asset && Math.abs(m.windowSeconds - APP_CADENCE_SECONDS) <= 5));
+  ok(`${asset}: the venue lists a series the app would trade`, live.length > 0,
+     `(${live.length} live across ${TRADED_CADENCES.join("/")}s)`);
+  ok(`${asset}: every row is the asset asked for, on a traded cadence`,
+     live.every((m) => m.asset === asset &&
+       TRADED_CADENCES.some((c) => Math.abs(m.windowSeconds - c) <= 5)));
   if (picked) {
     const q = quoteFromProbability(picked.lastProbability);
     ok(`${asset}: picked window is open and has room to bet`,

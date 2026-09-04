@@ -26,6 +26,13 @@ export interface Position {
   entryPrice: number;
   /** Payout multiplier the market was quoting when the user committed. */
   payoutMultiplier: number;
+  /**
+   * Length of the window this went into. The app trades whichever cadence
+   * dreamDEX has open, so a position outlives the knowledge of which one that
+   * was unless it carries it — and the share card would then describe the bet
+   * wrongly to everybody who received it.
+   */
+  windowSeconds: number;
 }
 
 export interface HistoryEntry {

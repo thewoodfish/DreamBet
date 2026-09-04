@@ -122,6 +122,7 @@ export default function Home() {
       strike: boundary,
       entryPrice: feed.price ?? boundary,
       payoutMultiplier: fill.payoutMultiplier,
+      windowSeconds: market.windowSeconds,
     });
     setTicket(null);
     setRound("committed");
@@ -134,6 +135,7 @@ export default function Home() {
       direction: ticket,
       stake: fill.cost,
       multiplier: fill.payoutMultiplier,
+      windowSeconds: market.windowSeconds,
     });
     // Whatever brought them here has been answered.
     setChallenge(null);
@@ -196,6 +198,7 @@ export default function Home() {
         strike: boundary,
         entryPrice: feed.price ?? boundary,
         payoutMultiplier: quote.payoutUp,
+        windowSeconds: market.windowSeconds,
       }
     );
     setRound("committed");
@@ -358,6 +361,7 @@ export default function Home() {
                   net: netResult(position, settlement.winner),
                   won: settlement.winner === position.direction,
                   voided: settlement.voided,
+                  windowSeconds: position.windowSeconds,
                 })
               }
               onNextRound={resetRound}

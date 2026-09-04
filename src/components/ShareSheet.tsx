@@ -15,12 +15,27 @@ import {
 import { haptic, shareToChat, type ShareOutcome } from "@/lib/telegram";
 import type { Asset } from "@/lib/assets";
 import type { Direction } from "@/lib/round";
-import { formatUsd } from "@/lib/format";
+import { formatUsd, windowLabel } from "@/lib/format";
 
 /** What is being shared — a bet just placed, or a window already decided. */
 export type ShareSubject =
-  | { kind: "bet"; direction: Direction; stake: number; multiplier: number }
-  | { kind: "result"; direction: Direction; net: number; won: boolean; voided: boolean };
+  /** `windowSeconds` is the window the bet actually went into — the app trades
+      whichever cadence is open, so the card cannot assume one. */
+  | {
+      kind: "bet";
+      direction: Direction;
+      stake: number;
+      multiplier: number;
+      windowSeconds: number;
+    }
+  | {
+      kind: "result";
+      direction: Direction;
+      net: number;
+      won: boolean;
+      voided: boolean;
+      windowSeconds: number;
+    };
 
 interface ShareSheetProps {
   asset: Asset;
@@ -53,13 +68,19 @@ export function ShareSheet({ asset, subject, username, onClose }: ShareSheetProp
 
     const text =
       subject.kind === "bet"
-        ? betText(challenge, formatUsd(subject.stake), NETWORK.collateral.symbol)
+        ? betText(
+            challenge,
+            formatUsd(subject.stake),
+            NETWORK.collateral.symbol,
+            windowLabel(subject.windowSeconds)
+          )
         : resultText(
             challenge,
             formatUsd(Math.abs(subject.net)),
             subject.won,
             subject.voided,
-            NETWORK.collateral.symbol
+            NETWORK.collateral.symbol,
+            windowLabel(subject.windowSeconds)
           );
 
     setOutcome(await shareToChat(challengeUrl(challenge), text));
@@ -214,7 +235,7 @@ function TradingCard({
               value={`${subject.net >= 0 ? "+" : "−"}${formatUsd(Math.abs(subject.net))} ${NETWORK.collateral.symbol}`}
               tone={subject.won && !subject.voided ? "text-up-soft" : "text-zinc-400"}
             />
-            <Stat label="Window" value="15 min" />
+            <Stat label="Window" value={windowLabel(subject.windowSeconds)} />
           </>
         )}
       </div>
