@@ -72,7 +72,7 @@ export function faucetErrorMessage(error: unknown): string {
   }
 
   if (isOutOfGasFunds(error)) {
-    return `You need a little ${NETWORK.chain.nativeCurrency.symbol} for gas before you can claim. Tap "for gas" below to get some.`;
+    return `You need a little ${NETWORK.chain.nativeCurrency.symbol} for gas before you can claim — the link above has it free.`;
   }
 
   if (error instanceof ContractRevertError) {
