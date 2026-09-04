@@ -23,11 +23,24 @@ export const dynamic = "force-dynamic";
  * and the worst a drained sponsor can do is stop new players starting.
  */
 
-/** STT sent to a player who has none. ~3 bets and a collateral claim at 6 gwei. */
-const DRIP = parseEther(process.env.GAS_SPONSOR_DRIP_STT ?? "0.06");
+/**
+ * What a funded wallet is topped up to.
+ *
+ * Sized against a ceiling, not a cost. The markets SDK sends every write with a
+ * 10,000,000 gas ceiling and Somnia charges a flat 6 gwei, so the chain demands
+ * 0.06 STT be on hand before it will accept an order at all — however little
+ * that order actually burns, which is nearer 0.018. A player therefore needs
+ * several times the ceiling to place more than one bet, and a target at exactly
+ * the ceiling is a wallet that is refused on its own first transaction.
+ */
+const TARGET = parseEther(process.env.GAS_SPONSOR_TARGET_STT ?? "0.15");
 
-/** Below this a wallet is treated as empty. Half a drip — roughly one bet left. */
-const TOP_UP_BELOW = DRIP / 2n;
+/**
+ * Below this a wallet is topped up. It has to sit above the 0.06 the chain
+ * reserves per order: a wallet held just under the old half-target would have
+ * been called funded while being unable to send anything at all.
+ */
+const TOP_UP_BELOW = parseEther("0.08");
 
 /** How often one address may be topped up, whatever it claims to be. */
 const COOLDOWN_MS = 60_000;
@@ -77,9 +90,9 @@ export async function GET() {
     configured: true,
     address: paying.account.address,
     balance: balance === null ? null : formatEther(balance),
-    drip: formatEther(DRIP),
+    target: formatEther(TARGET),
     /** Players still fundable from what is left, give or take. */
-    remaining: balance === null ? null : Number(balance / DRIP),
+    remaining: balance === null ? null : Number(balance / TARGET),
   });
 }
 
@@ -142,9 +155,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ funded: false, reason: "has-gas" });
     }
 
+    // Topped up to the target rather than sent a fixed amount, so a wallet
+    // with a little left costs the sponsor only the difference.
+    const value = TARGET - balance;
+
     const hash = await (queue = queue.then(
-      () => paying.wallet.sendTransaction({ to: address, value: DRIP }),
-      () => paying.wallet.sendTransaction({ to: address, value: DRIP })
+      () => paying.wallet.sendTransaction({ to: address, value }),
+      () => paying.wallet.sendTransaction({ to: address, value })
     ) as Promise<`0x${string}`>);
 
     lastFunded.set(key, Date.now());

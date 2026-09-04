@@ -47,9 +47,17 @@ export async function claimTestCollateral(
 
   // The address is passed explicitly rather than left to the SDK's own
   // registry, so this mints the exact token the balance is read from.
+  //
+  // The gas ceiling is ours rather than the SDK's 10,000,000. A ceiling is not
+  // a cost — the chain refunds what is not burnt — but Somnia demands the whole
+  // of it on hand before it will accept the transaction, and at a flat 6 gwei
+  // the SDK's default is 0.06 STT a new wallet has to be holding to mint its
+  // first collateral. This call estimates at 1.38M, so 2M is headroom that
+  // costs a player nothing and asks them to be holding a seventh as much.
   const { hash } = await trader.faucet({
     testUsdc: collateral,
     amount: BigInt(FAUCET_CLAIM) * 10n ** BigInt(decimals),
+    gas: 2_000_000n,
   });
 
   return hash;

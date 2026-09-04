@@ -45,7 +45,7 @@ every player.
 | --- | --- |
 | `GAS_SPONSOR_PRIVATE_KEY` | Key of the wallet paying everyone's gas. Fund the address with STT |
 | `TELEGRAM_BOT_TOKEN` | From BotFather. Without it, `/api/fund` drips to any address that asks |
-| `GAS_SPONSOR_DRIP_STT` | Optional. STT per player, default `0.06` |
+| `GAS_SPONSOR_TARGET_STT` | Optional. What a wallet is topped up to, default `0.15` |
 
 `GET /api/fund` reports the sponsor's address, its balance and how many players
 are left in it — the one number to check before a demo.
