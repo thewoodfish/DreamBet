@@ -26,19 +26,24 @@ export const dynamic = "force-dynamic";
 /**
  * What a funded wallet is topped up to.
  *
- * Sized against a ceiling, not a cost. The markets SDK sends every write with a
- * 10,000,000 gas ceiling and Somnia charges a flat 6 gwei, so the chain demands
- * 0.06 STT be on hand before it will accept an order at all — however little
- * that order actually burns, which is nearer 0.018. A player therefore needs
- * several times the ceiling to place more than one bet, and a target at exactly
- * the ceiling is a wallet that is refused on its own first transaction.
+ * Sized against a ceiling, not a cost — and against the ceiling's *fee cap*
+ * rather than the price paid. A wallet must cover `gas x maxFeePerGas` before a
+ * transaction is accepted, and while this chain settles at a flat 6 gwei the
+ * wallet builds every transaction at 60 gwei, so the real demand is ten times
+ * what the burn suggests. At `BET_GAS` in `trade.ts` — two million — that is
+ * 0.12 STT a player must be holding to place a bet that costs them 0.0036.
+ *
+ * 0.15 clears it with enough over for the approval and the order both. Raising
+ * that ceiling without raising this number stops every sponsored player dead;
+ * they are one constraint written in two files.
  */
 const TARGET = parseEther(process.env.GAS_SPONSOR_TARGET_STT ?? "0.15");
 
 /**
- * Below this a wallet is topped up. It has to sit above the 0.06 the chain
- * reserves per order: a wallet held just under the old half-target would have
- * been called funded while being unable to send anything at all.
+ * Below this a wallet is topped up. It has to clear what the chain reserves per
+ * write with room for the pair a first bet sends — a wallet held just under the
+ * old half-target would have been called funded while being unable to send
+ * anything at all.
  */
 const TOP_UP_BELOW = parseEther("0.08");
 
