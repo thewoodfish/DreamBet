@@ -10,6 +10,7 @@ import {
   isTMA,
   miniAppReady,
   restoreInitData,
+  retrieveRawInitData,
   shareURL,
 } from "@telegram-apps/sdk-react";
 import {
@@ -109,6 +110,22 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
  * outside Telegram and on clients too old to support the method, because a
  * missing buzz must never be the thing that stops a bet going through.
  */
+/**
+ * Telegram's signed launch payload, verbatim.
+ *
+ * Only ever sent to this app's own server, which checks the signature against
+ * the bot token before spending anything on the session's behalf. Parsing it
+ * client-side would prove nothing — the point is that Telegram signed it.
+ */
+export function rawInitData(): string | null {
+  try {
+    return retrieveRawInitData() ?? null;
+  } catch {
+    // Outside Telegram there is no launch payload, which is not an error.
+    return null;
+  }
+}
+
 export const haptic = {
   /** Arming a side, or any other light commitment. */
   tap: () => impact("light"),

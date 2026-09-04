@@ -23,6 +23,7 @@ import {
   FAUCET_CLAIM,
   GAS_FAUCET_URL,
 } from "@/lib/dreamdex/faucet";
+import { ensureGas } from "@/lib/dreamdex/gas";
 import { NoSignerError } from "@/lib/dreamdex/trade";
 import { avatarTint, initials } from "@/lib/leaderboard";
 import { haptic } from "@/lib/telegram";
@@ -84,6 +85,9 @@ export function AccountSheet({
       const signer = await account.getSigner();
       if (!signer) throw new NoSignerError();
 
+      // Minting collateral is itself a transaction, so the sponsor covers the
+      // gas for it first. A no-op for anyone who already has some.
+      await ensureGas(signer.address);
       await claimTestCollateral(signer);
 
       haptic.success();
@@ -262,21 +266,6 @@ export function AccountSheet({
                 </>
               )}
             </motion.button>
-          )}
-
-          {/* Said in words directly under the button, because the tile below
-              is where gas comes from and nobody reads a tile as a way out. */}
-          {FAUCET_AVAILABLE && account.authenticated && (
-            <a
-              href={GAS_FAUCET_URL}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => haptic.tap()}
-              className="mt-2 flex items-center justify-center gap-1 text-[11px] font-medium text-zinc-500 underline-offset-2 transition-colors active:text-zinc-200 active:underline"
-            >
-              Need {NETWORK.chain.nativeCurrency.symbol} for gas? Get it free
-              <ArrowUpRight className="h-3 w-3 shrink-0" strokeWidth={2.8} />
-            </a>
           )}
 
           <AnimatePresence>

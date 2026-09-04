@@ -38,10 +38,16 @@ Open <http://localhost:3000>. The layout is locked to mobile dimensions and
 renders inside a phone frame on wider screens. Without a Privy app id the app
 still prices real markets — it just has nothing to sign with, and says so.
 
-STT for gas comes from the [Somnia testnet faucet](https://testnet.somnia.network/).
 Test tUSDC is minted in the app: open the wallet sheet and tap **Get 10,000
 tUSDC**, which calls `faucet()` on the TestUSDC contract itself (10,000 per
 transaction, no cooldown).
+
+Gas is sponsored rather than asked for. Every public STT faucet wants a browser
+wallet to connect and a Mini App has none, so `POST /api/fund` drips STT from
+one key the deployment owns — before the collateral claim and before a bet, and
+never to a wallet that already has gas. Set `GAS_SPONSOR_PRIVATE_KEY`, fund the
+address `GET /api/fund` reports, and set `TELEGRAM_BOT_TOKEN` so only signed
+Telegram sessions can spend it. Unset, players need their own gas.
 
 ## Checks
 

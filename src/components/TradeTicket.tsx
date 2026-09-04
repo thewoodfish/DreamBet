@@ -6,6 +6,7 @@ import { ArrowDownRight, ArrowUpRight, Loader2, X, Zap } from "lucide-react";
 import { useDreamAccount } from "@/lib/account";
 import { useStakeQuote } from "@/hooks/useStakeQuote";
 import { NETWORK } from "@/lib/dreamdex/config";
+import { ensureGas } from "@/lib/dreamdex/gas";
 import {
   betErrorMessage,
   placeBet,
@@ -79,6 +80,11 @@ export function TradeTicket({
     try {
       const signer = await account.getSigner();
       if (!signer) throw new NoSignerError();
+
+      // The sponsor tops up anyone who cannot pay for this order. Cheaper here
+      // than as an error afterwards: a bet that fails for gas is a bet the
+      // player thinks they placed.
+      await ensureGas(signer.address);
 
       const fill = await placeBet({
         signer,
