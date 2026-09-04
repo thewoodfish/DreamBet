@@ -12,9 +12,11 @@ interface TopBarProps {
   balance: number | null;
   /** Shown when there is no wallet layer configured, so the UI stays previewable. */
   fallbackAddress: string;
+  /** Opens the wallet sheet — address, funding and, deliberately, logging out. */
+  onOpenAccount: () => void;
 }
 
-export function TopBar({ balance, fallbackAddress }: TopBarProps) {
+export function TopBar({ balance, fallbackAddress, onOpenAccount }: TopBarProps) {
   const account = useDreamAccount();
 
   // Without Privy configured there is nothing to log into, so the mock account
@@ -48,9 +50,13 @@ export function TopBar({ balance, fallbackAddress }: TopBarProps) {
       {!account.ready ? (
         <span className="h-[42px] w-[132px] animate-pulse rounded-2xl bg-zinc-900" />
       ) : connected ? (
+        /* Opens the wallet, rather than closing the session. A player whose
+           wallet was made for them has no other route to their own address, so
+           this is the tap that lets them fund it — logging out moved inside,
+           where it has to be chosen. */
         <button
           type="button"
-          onClick={account.isMock ? undefined : account.logout}
+          onClick={onOpenAccount}
           className="flex items-center gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-900/80 py-1.5 pl-3 pr-3.5 text-left transition-colors active:bg-zinc-800"
         >
           <Wallet className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={2.2} />

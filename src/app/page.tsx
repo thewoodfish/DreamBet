@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { AccountSheet } from "@/components/AccountSheet";
 import { AssetSelector } from "@/components/AssetSelector";
 import { ChallengeBanner } from "@/components/ChallengeBanner";
 import { CountdownBar } from "@/components/CountdownBar";
@@ -51,6 +52,7 @@ export default function Home() {
   const [ticket, setTicket] = useState<Direction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTab, setSheetTab] = useState<RecordTab>("record");
+  const [accountOpen, setAccountOpen] = useState(false);
   /** What the share card is currently showing, if it is open. */
   const [share, setShare] = useState<ShareSubject | null>(null);
   /** The challenge this session arrived on, until it is acted on or dismissed. */
@@ -235,7 +237,11 @@ export default function Home() {
         />
 
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <TopBar balance={balance} fallbackAddress={MOCK_WALLET} />
+          <TopBar
+            balance={balance}
+            fallbackAddress={MOCK_WALLET}
+            onOpenAccount={() => setAccountOpen(true)}
+          />
           <StatsStrip
             stats={MOCK_STATS}
             onOpenRecord={() => {
@@ -345,6 +351,16 @@ export default function Home() {
               subject={share}
               username={username}
               onClose={() => setShare(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {accountOpen && (
+            <AccountSheet
+              key="account-sheet"
+              balance={balance}
+              onClose={() => setAccountOpen(false)}
             />
           )}
         </AnimatePresence>
