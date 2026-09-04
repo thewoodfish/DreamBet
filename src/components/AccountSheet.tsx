@@ -1,11 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { Check, Copy, Fuel, LogOut, Wallet, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  Copy,
+  Droplets,
+  Fuel,
+  Loader2,
+  LogOut,
+  Wallet,
+  X,
+} from "lucide-react";
 import { useDreamAccount } from "@/lib/account";
 import { NETWORK } from "@/lib/dreamdex/config";
+import {
+  claimTestCollateral,
+  faucetErrorMessage,
+  FAUCET_AVAILABLE,
+  FAUCET_CLAIM,
+  GAS_FAUCET_URL,
+} from "@/lib/dreamdex/faucet";
+import { NoSignerError } from "@/lib/dreamdex/trade";
 import { avatarTint, initials } from "@/lib/leaderboard";
 import { haptic } from "@/lib/telegram";
 import { formatUsd } from "@/lib/format";
@@ -16,6 +34,9 @@ interface AccountSheetProps {
   /** Stand-in shown when no wallet layer is configured — the same one the top
       bar displays, so the two never disagree about who you are. */
   fallbackAddress: string;
+  /** Re-read the balance — the faucet moves it, and waiting out a poll after
+      a confirmed mint reads as a top-up that did not work. */
+  onFunded: () => void;
   onClose: () => void;
 }
 
@@ -30,10 +51,14 @@ interface AccountSheetProps {
 export function AccountSheet({
   balance,
   fallbackAddress,
+  onFunded,
   onClose,
 }: AccountSheetProps) {
   const account = useDreamAccount();
   const [copied, setCopied] = useState(false);
+  const [funding, setFunding] = useState(false);
+  const [funded, setFunded] = useState(false);
+  const [fundError, setFundError] = useState<string | null>(null);
   const address = account.address ?? (account.isMock ? fallbackAddress : null);
 
   async function copy() {
@@ -46,6 +71,34 @@ export function AccountSheet({
     } catch {
       // Some webviews refuse clipboard writes. The address is rendered in full
       // and selectable precisely so this is a nuisance rather than a dead end.
+    }
+  }
+
+  async function fund() {
+    setFunding(true);
+    setFundError(null);
+    // Heavier than a tap: this one spends gas, same as placing a bet.
+    haptic.press();
+
+    try {
+      const signer = await account.getSigner();
+      if (!signer) throw new NoSignerError();
+
+      await claimTestCollateral(signer);
+
+      haptic.success();
+      setFunded(true);
+      setTimeout(() => setFunded(false), 3000);
+      onFunded();
+    } catch (cause) {
+      haptic.failure();
+      setFundError(
+        cause instanceof NoSignerError
+          ? "Your wallet is still connecting. Give it a second and try again."
+          : faucetErrorMessage(cause)
+      );
+    } finally {
+      setFunding(false);
     }
   }
 
@@ -173,8 +226,62 @@ export function AccountSheet({
             </span>
           </div>
 
+          {/* A wallet minted behind a Telegram login has nobody to fund it —
+              nobody bridges into an address they have never seen — so on
+              testnet the app is the faucet's front end. It shouts while the
+              balance is empty and goes quiet once it is not. */}
+          {FAUCET_AVAILABLE && account.authenticated && (
+            <motion.button
+              type="button"
+              onClick={fund}
+              disabled={funding || !address}
+              whileTap={funding ? undefined : { scale: 0.97 }}
+              className={`mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold transition-colors disabled:opacity-60 ${
+                funded
+                  ? "bg-up/15 text-up-soft"
+                  : balance === 0
+                  ? "bg-violet-500/20 text-violet-100 ring-1 ring-inset ring-violet-400/40 active:bg-violet-500/30"
+                  : "bg-zinc-900 text-zinc-300 active:bg-zinc-800"
+              }`}
+            >
+              {funding ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.6} />
+                  Claiming…
+                </>
+              ) : funded ? (
+                <>
+                  <Check className="h-4 w-4" strokeWidth={3} />
+                  Test funds added
+                </>
+              ) : (
+                <>
+                  <Droplets className="h-4 w-4" strokeWidth={2.6} />
+                  Get {FAUCET_CLAIM.toLocaleString()}{" "}
+                  {NETWORK.collateral.symbol}
+                </>
+              )}
+            </motion.button>
+          )}
+
+          <AnimatePresence>
+            {fundError && (
+              <motion.p
+                key="fund-error"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden text-center text-[12px] font-medium leading-snug text-down-soft"
+              >
+                <span className="block pt-2">{fundError}</span>
+              </motion.p>
+            )}
+          </AnimatePresence>
+
           {/* Two different tokens do two different jobs here, and only one of
-              them is obvious — a funded balance with no gas still cannot bet. */}
+              them is obvious — a funded balance with no gas still cannot bet.
+              Gas is also the half this app cannot mint, so that tile is a way
+              out to the one place that can. */}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <FundingHint
               token={NETWORK.collateral.symbol}
@@ -185,6 +292,7 @@ export function AccountSheet({
               token={NETWORK.chain.nativeCurrency.symbol}
               purpose="for gas"
               icon={<Fuel className="h-3.5 w-3.5" strokeWidth={2.4} />}
+              href={FAUCET_AVAILABLE ? GAS_FAUCET_URL : undefined}
             />
           </div>
 
@@ -214,13 +322,16 @@ function FundingHint({
   token,
   purpose,
   icon,
+  href,
 }: {
   token: string;
   purpose: string;
   icon: React.ReactNode;
+  /** Where this token is obtained, when it is not obtained in the app. */
+  href?: string;
 }) {
-  return (
-    <span className="flex items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/50 px-3 py-2">
+  const body = (
+    <>
       <span className="shrink-0 text-zinc-600">{icon}</span>
       <span className="min-w-0 leading-tight">
         <span className="block truncate text-[12px] font-bold">{token}</span>
@@ -228,6 +339,27 @@ function FundingHint({
           {purpose}
         </span>
       </span>
-    </span>
+    </>
+  );
+
+  const className =
+    "flex items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/50 px-3 py-2";
+
+  if (!href) return <span className={className}>{body}</span>;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={() => haptic.tap()}
+      className={`${className} transition-colors active:bg-zinc-800/70`}
+    >
+      {body}
+      <ArrowUpRight
+        className="ml-auto h-3.5 w-3.5 shrink-0 text-zinc-600"
+        strokeWidth={2.4}
+      />
+    </a>
   );
 }

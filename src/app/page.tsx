@@ -361,6 +361,7 @@ export default function Home() {
               key="account-sheet"
               balance={balance}
               fallbackAddress={MOCK_WALLET}
+              onFunded={collateral.refresh}
               onClose={() => setAccountOpen(false)}
             />
           )}

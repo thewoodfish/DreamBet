@@ -4,6 +4,7 @@ import type { PlaceOrderResult } from "@somnia-chain/markets-sdk";
 import { exchange, publicClient } from "./client";
 import { NETWORK } from "./config";
 import { descale, type StakeQuote } from "./book";
+import { isUserRejection } from "./errors";
 import type { DreamSigner } from "@/lib/account";
 
 export interface PlaceBetParams {
@@ -170,21 +171,4 @@ export function betErrorMessage(error: unknown): string {
   }
 
   return "Couldn't place that bet. Nothing was staked — try again.";
-}
-
-/**
- * A wallet's "user said no". EIP-1193 reserves 4001 for it, but the code is
- * carried at a different depth by every wallet, and Privy's embedded modal
- * reports its own dismissal in words — so both are checked.
- */
-function isUserRejection(error: unknown): boolean {
-  const code = (error as { code?: unknown })?.code;
-  if (code === 4001 || code === "ACTION_REJECTED") return true;
-
-  const message = error instanceof Error ? error.message.toLowerCase() : "";
-  return (
-    message.includes("user rejected") ||
-    message.includes("user denied") ||
-    message.includes("rejected the request")
-  );
 }

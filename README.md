@@ -38,7 +38,10 @@ Open <http://localhost:3000>. The layout is locked to mobile dimensions and
 renders inside a phone frame on wider screens. Without a Privy app id the app
 still prices real markets — it just has nothing to sign with, and says so.
 
-Testnet tUSDC and STT for gas come from the SomniaHacks faucet.
+STT for gas comes from the [Somnia testnet faucet](https://testnet.somnia.network/).
+Test tUSDC is minted in the app: open the wallet sheet and tap **Get 10,000
+tUSDC**, which calls `faucet()` on the TestUSDC contract itself (10,000 per
+transaction, no cooldown).
 
 ## Checks
 
