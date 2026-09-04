@@ -20,11 +20,15 @@ jobs:
     name: Types, lint, checks, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      # 22.18 is the real floor, not a preference: the verifier runs .mts
+      # sources directly on Node's own type stripping, and its resolve hook
+      # needs module.registerHooks. Node 20 has neither, and fails before the
+      # first check runs.
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       # `npm ci` honours .npmrc, which sets legacy-peer-deps for the Privy /
@@ -57,11 +61,11 @@ jobs:
     # a red X for it would only teach people to ignore red Xs.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci

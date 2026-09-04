@@ -81,6 +81,11 @@ CI (`.github/workflows/ci.yml`) gates a merge on typecheck, lint, `npm run
 verify` and a production build. It deliberately does **not** gate on the live
 venue check — see below.
 
+CI runs Node 24, and `engines` requires 22.18 or newer. That floor is real, not
+a preference: the verifier runs `.mts` sources directly on Node's own type
+stripping, and its resolve hook needs `module.registerHooks`. Neither exists on
+Node 20, which fails before the first check runs.
+
 ---
 
 ## Testing inside Telegram before you ship
