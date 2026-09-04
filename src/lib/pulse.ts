@@ -268,9 +268,21 @@ function sentenceFor(
     }
   }
 
-  // One supporting fact, not three. The streak is the more interesting of the
-  // two when both are true, because an untraded book is the normal state here.
-  if (read.streak && read.streak.length >= 3) {
+  // One supporting fact, not three, in the order they matter.
+  //
+  // A run of voids leads, because it is the only one that changes what betting
+  // here means: a window that settles as a void pays nobody and hands the
+  // stake back, and this venue does it in stretches — seven 5-minute windows
+  // in a row on the afternoon this was written. Six grey marks in the strip
+  // with nothing to explain them is the panel showing a fact and withholding
+  // its meaning.
+  const voids = input.recent.filter((o) => o === "void").length;
+
+  if (voids >= 3 && voids * 2 >= input.recent.length) {
+    clauses.push(
+      `${voids} of the last ${input.recent.length} windows on this cadence settled as voids — stakes returned, nobody paid out.`
+    );
+  } else if (read.streak && read.streak.length >= 3) {
     clauses.push(
       `The last ${read.streak.length} windows all closed ${read.streak.side === "up" ? "UP" : "DOWN"}.`
     );

@@ -60,28 +60,31 @@ export function AssetSelector({
                 className="absolute inset-0 rounded-full border border-zinc-700 bg-zinc-800/90"
               />
             )}
-            <AssetIcon
-              symbol={asset.symbol}
-              className={`relative z-10 h-6 w-6 transition-[filter,opacity] ${
-                active
-                  ? ""
-                  : paused
-                    ? "opacity-30 grayscale"
-                    : "opacity-50 saturate-50"
-              }`}
-            />
-            <span className="relative z-10">{asset.pair}</span>
-            {paused && (
-              // Small enough not to compete with the pair, present enough to
-              // explain why the pill looks spent.
-              <span className="relative z-10 flex items-center">
+            {/* The paused mark rides on the icon rather than trailing the
+                label. The row scrolls horizontally, and anything after the
+                last pill's text sits past the container's edge — which is
+                exactly where the mark would be needed, since the dark asset
+                is the one at the end of the row. */}
+            <span className="relative z-10 shrink-0">
+              <AssetIcon
+                symbol={asset.symbol}
+                className={`h-6 w-6 transition-[filter,opacity] ${
+                  active
+                    ? ""
+                    : paused
+                      ? "opacity-30 grayscale"
+                      : "opacity-50 saturate-50"
+                }`}
+              />
+              {paused && (
                 <span
                   aria-hidden
-                  className="h-1.5 w-1.5 rounded-full bg-zinc-600"
+                  className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-zinc-500 ring-2 ring-zinc-950"
                 />
-                <span className="sr-only">paused — no window open</span>
-              </span>
-            )}
+              )}
+            </span>
+            <span className="relative z-10">{asset.pair}</span>
+            {paused && <span className="sr-only">paused — no window open</span>}
           </motion.button>
         );
       })}

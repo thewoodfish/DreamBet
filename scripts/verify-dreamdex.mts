@@ -269,6 +269,16 @@ ok("a window with no line posted says so instead of inventing one",
    readPulse({ ...basePulse, boundary: null }).sentence.includes("no line posted"));
 ok("an untraded book is called indicative",
    readPulse({ ...basePulse, upProbability: null }).sentence.includes("indicative"));
+// This venue voids windows in stretches. Six unexplained grey marks in the
+// strip is a fact shown with its meaning withheld.
+ok("a run of voids is explained rather than left as grey marks", (() => {
+  const s = readPulse({ ...basePulse,
+    recent: ["void","void","void","void","up","down"] }).sentence;
+  return s.includes("4 of the last 6 windows") && s.includes("stakes returned");
+})());
+ok("the odd void is not worth a sentence",
+   !readPulse({ ...basePulse, recent: ["void","up","down","up","down","up"] })
+     .sentence.includes("stakes returned"));
 ok("a streak is reported with the side it actually ran on",
    readPulse({ ...basePulse, recent: ["down","down","down"] }).sentence.includes("closed DOWN"));
 ok("the group tally is a count, never a name", (() => {
