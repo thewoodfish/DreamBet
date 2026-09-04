@@ -6,7 +6,12 @@ import { ArrowDownRight, ArrowUpRight, Loader2, X, Zap } from "lucide-react";
 import { useDreamAccount } from "@/lib/account";
 import { useStakeQuote } from "@/hooks/useStakeQuote";
 import { NETWORK } from "@/lib/dreamdex/config";
-import { betErrorMessage, placeBet, type BetFill } from "@/lib/dreamdex/trade";
+import {
+  betErrorMessage,
+  placeBet,
+  NoSignerError,
+  type BetFill,
+} from "@/lib/dreamdex/trade";
 import { haptic } from "@/lib/telegram";
 import type { DreamdexMarket } from "@/lib/dreamdex/market";
 import type { StakeQuote } from "@/lib/dreamdex/book";
@@ -73,7 +78,7 @@ export function TradeTicket({
 
     try {
       const signer = await account.getSigner();
-      if (!signer) throw new Error("No wallet to sign with");
+      if (!signer) throw new NoSignerError();
 
       const fill = await placeBet({
         signer,
@@ -198,6 +203,7 @@ export function TradeTicket({
 
           <ConfirmButton
             signedIn={account.authenticated}
+            walletReady={account.walletReady}
             previewOnly={account.isMock}
             onLogin={account.login}
             ready={quote !== null && !short}
@@ -390,6 +396,7 @@ function QuickPill({
 
 function ConfirmButton({
   signedIn,
+  walletReady,
   previewOnly,
   onLogin,
   ready,
@@ -399,6 +406,9 @@ function ConfirmButton({
   onConfirm,
 }: {
   signedIn: boolean;
+  /** The signer exists. Inside Telegram the login is seamless, so this lands a
+      moment after `signedIn` does rather than together with it. */
+  walletReady: boolean;
   /** No wallet layer is configured at all — there is nothing to sign with. */
   previewOnly: boolean;
   onLogin: () => void;
@@ -431,7 +441,7 @@ function ConfirmButton({
     );
   }
 
-  const disabled = !ready || submitting || pricing;
+  const disabled = !ready || submitting || pricing || !walletReady;
 
   return (
     <Button
@@ -443,6 +453,11 @@ function ConfirmButton({
         <>
           <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.6} />
           Placing your bet
+        </>
+      ) : !walletReady ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.6} />
+          Connecting your wallet
         </>
       ) : pricing ? (
         <>

@@ -120,11 +120,27 @@ export class EmptyFillError extends Error {
 }
 
 /**
+ * Signed in, but the wallet behind the account has not finished resolving. The
+ * UI disables confirm while that is true; this is the backstop for the race
+ * where it is tapped on the frame before.
+ */
+export class NoSignerError extends Error {
+  constructor() {
+    super("No wallet to sign with yet");
+    this.name = "NoSignerError";
+  }
+}
+
+/**
  * Chain and wallet failures, in words a punter can act on. Every branch here
  * ends in something the user can *do*; the protocol's own error name is only
  * ever a route to that sentence, never shown.
  */
 export function betErrorMessage(error: unknown): string {
+  if (error instanceof NoSignerError) {
+    return "Your wallet is still connecting. Give it a second and try again.";
+  }
+
   if (error instanceof EmptyFillError) {
     return "Nobody was offering that side by the time your bet landed. Nothing was staked — try again.";
   }

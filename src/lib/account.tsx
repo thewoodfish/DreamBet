@@ -23,6 +23,15 @@ export interface DreamAccount {
   address: `0x${string}` | null;
   /** Telegram handle where we have one — the social hook for the share card. */
   username: string | null;
+  /**
+   * A signer for `address` is actually available. Distinct from
+   * `authenticated`: Privy resolves the wallet list a moment after the login
+   * itself, and inside Telegram that login is seamless — so there is a real
+   * window where somebody is signed in, sees their balance, and still has
+   * nothing to sign with. Tapping confirm in that window must read as "not
+   * yet", never as a failed bet.
+   */
+  walletReady: boolean;
   /** True when running without Privy configured, so the UI can say so. */
   isMock: boolean;
   login: () => void;
@@ -40,6 +49,7 @@ const MOCK_ACCOUNT: DreamAccount = {
   authenticated: false,
   address: null,
   username: null,
+  walletReady: false,
   isMock: true,
   login: () => undefined,
   logout: () => undefined,
@@ -60,20 +70,27 @@ export function useDreamAccount(): DreamAccount {
  */
 export function PrivyAccountBridge({ children }: { children: React.ReactNode }) {
   const { ready, authenticated, user, login, logout } = usePrivy();
-  const { wallets } = useWallets();
+  const { wallets, ready: walletsReady } = useWallets();
 
   const address = (user?.wallet?.address as `0x${string}`) ?? null;
 
-  const getSigner = useCallback(async (): Promise<DreamSigner | null> => {
-    if (!address) return null;
+  /**
+   * The account the UI names is the one that must sign: its address is what
+   * the balance was read for and what the position will be recorded against.
+   * Anything else would spend a different wallet than the one on screen.
+   */
+  const wallet = useMemo(
+    () =>
+      address
+        ? wallets.find(
+            (w) => w.address.toLowerCase() === address.toLowerCase()
+          ) ?? null
+        : null,
+    [address, wallets]
+  );
 
-    // The account the UI names is the one that must sign: its address is what
-    // the balance was read for and what the position will be recorded against.
-    // Anything else would spend a different wallet than the one on screen.
-    const wallet = wallets.find(
-      (w) => w.address.toLowerCase() === address.toLowerCase()
-    );
-    if (!wallet) return null;
+  const getSigner = useCallback(async (): Promise<DreamSigner | null> => {
+    if (!address || !wallet) return null;
 
     // A wallet left on another chain would sign a transaction Somnia never
     // sees. Privy rebuilds the provider per request, so the switch has to
@@ -83,7 +100,7 @@ export function PrivyAccountBridge({ children }: { children: React.ReactNode }) 
     }
 
     return { provider: await wallet.getEthereumProvider(), address };
-  }, [address, wallets]);
+  }, [address, wallet]);
 
   const value = useMemo<DreamAccount>(
     () => ({
@@ -91,12 +108,13 @@ export function PrivyAccountBridge({ children }: { children: React.ReactNode }) 
       authenticated,
       address,
       username: user?.telegram?.username ?? null,
+      walletReady: walletsReady && wallet !== null,
       isMock: false,
       login,
       logout,
       getSigner,
     }),
-    [ready, authenticated, address, user, login, logout, getSigner]
+    [ready, authenticated, address, user, login, logout, getSigner, walletsReady, wallet]
   );
 
   return (
