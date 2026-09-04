@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Send, Wallet } from "lucide-react";
 import { useDreamAccount } from "@/lib/account";
 import { NETWORK } from "@/lib/dreamdex/config";
+import { avatarTint, initials } from "@/lib/leaderboard";
 import { formatUsd, truncateAddress } from "@/lib/format";
 
 interface TopBarProps {
@@ -54,28 +55,44 @@ export function TopBar({ balance, fallbackAddress, onOpenAccount }: TopBarProps)
            wallet was made for them has no other route to their own address, so
            this is the tap that lets them fund it — logging out moved inside,
            where it has to be chosen. */
-        <button
+        <motion.button
           type="button"
           onClick={onOpenAccount}
-          className="flex items-center gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-900/80 py-1.5 pl-3 pr-3.5 text-left transition-colors active:bg-zinc-800"
+          whileTap={{ scale: 0.97 }}
+          className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-900/40 py-1.5 pl-1.5 pr-3 text-left shadow-card transition-colors active:border-zinc-700"
         >
-          <Wallet className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={2.2} />
+          {/* The same tint this address wears on the leaderboard, so "me" looks
+              the same everywhere in the app. */}
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[10px] font-bold text-white/95 ring-1 ring-inset ring-white/15 ${avatarTint(
+              address
+            )}`}
+          >
+            {account.username ? (
+              initials(account.username)
+            ) : (
+              <Wallet className="h-3.5 w-3.5" strokeWidth={2.6} />
+            )}
+          </span>
+
           <span className="leading-tight">
-            <span className="tnum block text-[13px] font-semibold">
-              {balance === null ? (
-                <span className="inline-block h-3 w-12 animate-pulse rounded bg-zinc-800 align-middle" />
-              ) : (
-                formatUsd(balance)
-              )}{" "}
-              <span className="text-[11px] font-medium text-zinc-500">
+            <span className="flex items-baseline gap-1">
+              <span className="tnum text-[14px] font-bold tracking-tight text-white">
+                {balance === null ? (
+                  <span className="inline-block h-3.5 w-11 animate-pulse rounded bg-zinc-800 align-middle" />
+                ) : (
+                  formatUsd(balance)
+                )}
+              </span>
+              <span className="text-[10px] font-semibold text-zinc-500">
                 {NETWORK.collateral.symbol}
               </span>
             </span>
-            <span className="tnum block font-mono text-[10px] text-zinc-500">
-              {truncateAddress(address)}
+            <span className="tnum mt-0.5 block font-mono text-[10px] leading-none text-zinc-600">
+              {truncateAddress(address, 5, 4)}
             </span>
           </span>
-        </button>
+        </motion.button>
       ) : (
         /* Step 3's onboarding: one tap, no seed phrase — Privy spins the
            embedded EVM wallet up behind the Telegram identity. */

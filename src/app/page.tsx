@@ -360,6 +360,7 @@ export default function Home() {
             <AccountSheet
               key="account-sheet"
               balance={balance}
+              fallbackAddress={MOCK_WALLET}
               onClose={() => setAccountOpen(false)}
             />
           )}
