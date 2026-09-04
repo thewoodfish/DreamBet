@@ -11,6 +11,7 @@ import {
   trim,
   writeJson,
 } from "@/lib/server/store";
+import { betKey, listKey, verdictKey } from "@/lib/server/keys";
 import type { BetRecord, Verdict } from "@/lib/board/types";
 import type { LeaderboardEntry } from "@/lib/leaderboard";
 
@@ -38,11 +39,6 @@ const KEEP = 300;
 
 /** Bets pulled into one table. */
 const PAGE = 200;
-
-const betKey = (hash: string) => `bet:${hash.toLowerCase()}`;
-const verdictKey = (marketId: string) => `verdict:${marketId.toLowerCase()}`;
-const listKey = (group: string | null) =>
-  group ? `board:group:${group}` : "board:global";
 
 export async function POST(request: Request) {
   if (!storeConfigured) {

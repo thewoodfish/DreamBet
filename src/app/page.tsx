@@ -12,6 +12,7 @@ import { MarketSentiment } from "@/components/MarketSentiment";
 import { PositionCard } from "@/components/PositionCard";
 import { PredictButtons } from "@/components/PredictButtons";
 import { PriceWidget } from "@/components/PriceWidget";
+import { PulseSheet } from "@/components/PulseSheet";
 import { SettlementOverlay } from "@/components/SettlementOverlay";
 import { ShareSheet, type ShareSubject } from "@/components/ShareSheet";
 import { StatsStrip } from "@/components/StatsStrip";
@@ -19,6 +20,7 @@ import { TopBar } from "@/components/TopBar";
 import { TradeTicket } from "@/components/TradeTicket";
 import { useAssetLiveness, type AssetLivenessMap } from "@/hooks/useAssetLiveness";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
+import { useMarketPulse } from "@/hooks/useMarketPulse";
 import { recordBet } from "@/lib/board/client";
 import { useDreamdexWindow } from "@/hooks/useDreamdexWindow";
 import { useEventWindow } from "@/hooks/useEventWindow";
@@ -55,6 +57,8 @@ export default function Home() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTab, setSheetTab] = useState<RecordTab>("record");
   const [accountOpen, setAccountOpen] = useState(false);
+  /** The market pulse drawer. Nothing is fetched for it until it is open. */
+  const [pulseOpen, setPulseOpen] = useState(false);
   /** What the share card is currently showing, if it is open. */
   const [share, setShare] = useState<ShareSubject | null>(null);
   /** The challenge this session arrived on, until it is acted on or dismissed. */
@@ -104,6 +108,10 @@ export default function Home() {
   const collateral = useCollateralBalance(account.address);
   // Real balance once there is a wallet to read; the mock figure otherwise.
   const balance = account.isMock ? MOCK_BALANCE : collateral.value;
+
+  // The three things the pulse panel cannot derive from what is already on
+  // screen. Gated on the drawer being open, so a closed panel costs nothing.
+  const pulse = useMarketPulse(market, telegram.chatInstance, pulseOpen);
 
   // Only watched once the user is actually in a window, so an idle screen is
   // not polling for a verdict nobody is waiting on.
@@ -285,6 +293,10 @@ export default function Home() {
             balance={balance}
             fallbackAddress={MOCK_WALLET}
             onOpenAccount={() => setAccountOpen(true)}
+            onOpenPulse={() => {
+              haptic.tap();
+              setPulseOpen(true);
+            }}
           />
           <StatsStrip
             stats={MOCK_STATS}
@@ -401,6 +413,23 @@ export default function Home() {
               subject={share}
               username={username}
               onClose={() => setShare(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {pulseOpen && (
+            <PulseSheet
+              key="pulse-sheet"
+              asset={asset}
+              market={market}
+              boundary={boundary}
+              price={feed.price}
+              history={feed.history}
+              secondsLeft={eventWindow.secondsLeft}
+              upProbability={market?.lastProbability ?? null}
+              data={pulse}
+              onClose={() => setPulseOpen(false)}
             />
           )}
         </AnimatePresence>

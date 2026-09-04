@@ -8,6 +8,7 @@ import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
 import { countdownTicks, windowLabel } from "../src/lib/format.ts";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
+import { typicalMovePct, distancePct, minutesOfMovement, closeness, outcomeStreak, readPulse, formatPctValue } from "../src/lib/pulse.ts";
 
 let fail = 0;
 const ok = (label: string, cond: boolean, extra = "") => {
@@ -188,6 +189,101 @@ ok("the copy names the window the bet actually went into", (() => {
 ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
+
+// --- the market pulse: arithmetic on real prints, and the words it produces ---
+//
+// A walk that steps exactly 1% each minute, so "typical move" has a known
+// answer and every ratio built on it can be checked by hand.
+const WALK = Array.from({ length: 20 }, (_, i) => 100 * 1.01 ** i);
+ok("a steady 1% walk reports a 1% typical move",
+   Math.abs(typicalMovePct(WALK)! - 1) < 1e-9, `${typicalMovePct(WALK)}`);
+ok("one spike does not become the typical move", (() => {
+  const spiked = [...WALK];
+  spiked[10] = spiked[10] * 3;   // a tripling, then a fall straight back
+  const median = typicalMovePct(spiked)!;
+  return Math.abs(median - 1) < 0.2;  // a mean would be dragged far past this
+})(), `${typicalMovePct((() => { const s = [...WALK]; s[10] *= 3; return s; })())}`);
+ok("a flat series has no typical move rather than a zero one",
+   typicalMovePct([100, 100, 100]) === null);
+// A stalled oracle republishes its last answer, which is most of the series by
+// the time anyone notices. Counting those repeats as zero-sized moves would put
+// the median at zero and report a moving market as motionless.
+ok("a feed that stalls half the hour still reports the half it measured", (() => {
+  const moved = [100, 101, 102, 103, 104];        // 5 real 1% moves
+  const stalled = Array.from({ length: 30 }, () => 104);
+  const median = typicalMovePct([...moved, ...stalled]);
+  return median !== null && Math.abs(median - 1) < 0.05;
+})(), `${typicalMovePct([100, 101, 102, 103, 104, ...Array.from({ length: 30 }, () => 104)])}`);
+ok("a series too short to have moved yields nothing",
+   typicalMovePct([]) === null && typicalMovePct([100]) === null);
+
+ok("distance is signed from the line, not absolute",
+   distancePct(101, 100) === 1 && distancePct(99, 100) === -1);
+ok("no price or no line is no distance",
+   distancePct(null, 100) === null && distancePct(100, null) === null &&
+   distancePct(100, 0) === null);
+
+ok("distance reads as minutes of ordinary movement",
+   minutesOfMovement(0.5, 0.1) === 5 && minutesOfMovement(-0.5, 0.1) === 5);
+
+// The comparison the whole panel turns on: the same distance is a coin flip
+// with ten minutes to run and a settled question with one.
+ok("a line well within reach is too close to call",
+   closeness(1, 10 * 60) === "coin-flip");
+ok("a line about as far as the time allows is a lean",
+   closeness(8, 10 * 60) === "leaning");
+ok("a line further than the time allows is a clear lead",
+   closeness(20, 10 * 60) === "clear");
+ok("an expired or unmeasurable window claims nothing",
+   closeness(5, 0) === "unknown" && closeness(null, 600) === "unknown");
+
+ok("a run of same-side windows is a streak",
+   outcomeStreak(["up", "up", "up", "down"])?.length === 3);
+ok("a streak is counted from the newest window, not the longest run",
+   outcomeStreak(["down", "up", "up", "up"])?.side === "down" &&
+   outcomeStreak(["down", "up", "up", "up"])?.length === 1);
+ok("a void breaks a run rather than joining a side",
+   outcomeStreak(["void", "up", "up"]) === null &&
+   outcomeStreak(["up", "void", "up"])?.length === 1);
+ok("no history is no streak", outcomeStreak([]) === null);
+
+ok("hundredths of a percent survive being formatted",
+   formatPctValue(0.043) === "0.043%" && formatPctValue(2.5) === "2.5%");
+
+// The sentence has to stay true to whichever facts exist, including none.
+const basePulse = {
+  symbol: "BTC", price: 101, boundary: 100, history: WALK,
+  secondsLeft: 600, recent: [] as ("up"|"down"|"void")[],
+  upProbability: 0.5, book: null, group: null,
+};
+ok("the copy never advises a side", (() => {
+  const said = [
+    readPulse(basePulse).sentence,
+    readPulse({ ...basePulse, price: 100.01 }).sentence,
+    readPulse({ ...basePulse, price: 90, secondsLeft: 30 }).sentence,
+    readPulse({ ...basePulse, recent: ["up","up","up","up"] }).sentence,
+  ].join(" ").toLowerCase();
+  return !/\bbet\b|\bshould\b|\blikely\b|\bwill\b|\bpredict/.test(said);
+})());
+ok("a window with no line posted says so instead of inventing one",
+   readPulse({ ...basePulse, boundary: null }).sentence.includes("no line posted"));
+ok("an untraded book is called indicative",
+   readPulse({ ...basePulse, upProbability: null }).sentence.includes("indicative"));
+ok("a streak is reported with the side it actually ran on",
+   readPulse({ ...basePulse, recent: ["down","down","down"] }).sentence.includes("closed DOWN"));
+ok("the group tally is a count, never a name", (() => {
+  const s = readPulse({ ...basePulse,
+    group: { up: 3, down: 1, upStake: 30, downStake: 10, scope: "group" as const } }).sentence;
+  return s.includes("3 of your group took UP");
+})());
+ok("a far line with seconds left reads as clear, not as a flip",
+   readPulse({ ...basePulse, price: 130, secondsLeft: 30 }).closeness === "clear");
+// 100% away over a 1%-a-minute walk is a hundred minutes, which is a number
+// nobody needs to hear when there are thirty seconds left.
+ok("an absurdly distant line is capped rather than counted out in minutes",
+   readPulse({ ...basePulse, price: 200, secondsLeft: 30 }).sentence.includes("over an hour"));
+ok("a distance inside the cap still reads in minutes",
+   readPulse({ ...basePulse, price: 130, secondsLeft: 30 }).sentence.includes("about 30 minutes"));
 
 // --- the pill row: what one poll of an asset's board means for it ---
 //

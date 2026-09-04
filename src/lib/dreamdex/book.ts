@@ -99,6 +99,45 @@ export async function quoteStake(
 }
 
 /**
+ * What is resting in the book right now, in the terms the pulse panel shows.
+ *
+ * The asks are the side that matters to a punter: those are the orders somebody
+ * buying UP or DOWN would actually cross. Bids are what you could sell into,
+ * which is a different question and not the one being asked here.
+ *
+ * Null on any failure — an unreadable book is a missing row in a panel, never
+ * a reason for the panel not to open.
+ */
+export async function fetchBookDepth(
+  pool: `0x${string}`,
+  decimals: number
+): Promise<{
+  upOffers: number;
+  downOffers: number;
+  upSize: number;
+  downSize: number;
+} | null> {
+  try {
+    const book = await exchange.client.getBinaryOrderBook(pool, {
+      depth: BOOK_DEPTH,
+      decimals,
+    });
+
+    const size = (levels: { quantity: bigint }[]) =>
+      levels.reduce((total, l) => total + descale(l.quantity, decimals), 0);
+
+    return {
+      upOffers: book.yesAsks.length,
+      downOffers: book.noAsks.length,
+      upSize: size(book.yesAsks),
+      downSize: size(book.noAsks),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A human amount into the pool's raw units. Anything finer than the collateral
  * can express is dropped rather than rounded up, so a typed amount can never
  * escrow more than the user asked for.

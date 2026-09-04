@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Send, Wallet } from "lucide-react";
+import { Activity, Send, Wallet } from "lucide-react";
 import { useDreamAccount } from "@/lib/account";
 import { NETWORK } from "@/lib/dreamdex/config";
 import { avatarTint, initials } from "@/lib/leaderboard";
@@ -15,9 +15,16 @@ interface TopBarProps {
   fallbackAddress: string;
   /** Opens the wallet sheet — address, funding and, deliberately, logging out. */
   onOpenAccount: () => void;
+  /** Opens the market pulse — what is happening in the window right now. */
+  onOpenPulse: () => void;
 }
 
-export function TopBar({ balance, fallbackAddress, onOpenAccount }: TopBarProps) {
+export function TopBar({
+  balance,
+  fallbackAddress,
+  onOpenAccount,
+  onOpenPulse,
+}: TopBarProps) {
   const account = useDreamAccount();
 
   // Without Privy configured there is nothing to log into, so the mock account
@@ -47,6 +54,19 @@ export function TopBar({ balance, fallbackAddress, onOpenAccount }: TopBarProps)
           </p>
         </div>
       </div>
+
+      <div className="flex items-center gap-2">
+      {/* Reading the market is a different job from managing the wallet, so it
+          gets its own tap rather than another row inside a sheet about money. */}
+      <motion.button
+        type="button"
+        onClick={onOpenPulse}
+        whileTap={{ scale: 0.94 }}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 transition-colors active:border-zinc-700 active:text-white"
+        aria-label="Market pulse"
+      >
+        <Activity className="h-4 w-4" strokeWidth={2.5} />
+      </motion.button>
 
       {!account.ready ? (
         <span className="h-[42px] w-[132px] animate-pulse rounded-2xl bg-zinc-900" />
@@ -106,6 +126,7 @@ export function TopBar({ balance, fallbackAddress, onOpenAccount }: TopBarProps)
           Log in
         </motion.button>
       )}
+      </div>
     </header>
   );
 }
