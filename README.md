@@ -42,9 +42,9 @@ Test tUSDC is minted in the app: open the wallet sheet and tap **Get 10,000
 tUSDC**, which calls `faucet()` on the TestUSDC contract itself (10,000 per
 transaction, no cooldown).
 
-Gas is sponsored rather than asked for. Every public STT faucet wants a browser
-wallet to connect and a Mini App has none, so `POST /api/fund` drips STT from
-one key the deployment owns — before the collateral claim and before a bet, and
+Gas is sponsored rather than asked for, and the app never sends a player to
+find their own — every public STT faucet wants a browser wallet to connect and
+a Mini App has none. `POST /api/fund` drips STT from one key the deployment owns — before the collateral claim and before a bet, and
 never to a wallet that already has gas. Set `GAS_SPONSOR_PRIVATE_KEY`, fund the
 address `GET /api/fund` reports, and set `TELEGRAM_BOT_TOKEN` so only signed
 Telegram sessions can spend it. Unset, players need their own gas.

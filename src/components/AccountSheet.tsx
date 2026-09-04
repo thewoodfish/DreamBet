@@ -4,7 +4,6 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  ArrowUpRight,
   Check,
   Copy,
   Droplets,
@@ -21,7 +20,6 @@ import {
   faucetErrorMessage,
   FAUCET_AVAILABLE,
   FAUCET_CLAIM,
-  GAS_FAUCET_URL,
 } from "@/lib/dreamdex/faucet";
 import { ensureGas } from "@/lib/dreamdex/gas";
 import { NoSignerError } from "@/lib/dreamdex/trade";
@@ -284,8 +282,8 @@ export function AccountSheet({
 
           {/* Two different tokens do two different jobs here, and only one of
               them is obvious — a funded balance with no gas still cannot bet.
-              Gas is also the half this app cannot mint, so that tile is a way
-              out to the one place that can. */}
+              Neither is the player's errand: the collateral is a tap above and
+              the gas is the app's problem, so these only say what is what. */}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <FundingHint
               token={NETWORK.collateral.symbol}
@@ -296,7 +294,6 @@ export function AccountSheet({
               token={NETWORK.chain.nativeCurrency.symbol}
               purpose="for gas"
               icon={<Fuel className="h-3.5 w-3.5" strokeWidth={2.4} />}
-              href={FAUCET_AVAILABLE ? GAS_FAUCET_URL : undefined}
             />
           </div>
 
@@ -326,16 +323,13 @@ function FundingHint({
   token,
   purpose,
   icon,
-  href,
 }: {
   token: string;
   purpose: string;
   icon: React.ReactNode;
-  /** Where this token is obtained, when it is not obtained in the app. */
-  href?: string;
 }) {
-  const body = (
-    <>
+  return (
+    <span className="flex items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/50 px-3 py-2">
       <span className="shrink-0 text-zinc-600">{icon}</span>
       <span className="min-w-0 leading-tight">
         <span className="block truncate text-[12px] font-bold">{token}</span>
@@ -343,27 +337,6 @@ function FundingHint({
           {purpose}
         </span>
       </span>
-    </>
-  );
-
-  const className =
-    "flex items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/50 px-3 py-2";
-
-  if (!href) return <span className={className}>{body}</span>;
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      onClick={() => haptic.tap()}
-      className={`${className} transition-colors active:bg-zinc-800/70`}
-    >
-      {body}
-      <ArrowUpRight
-        className="ml-auto h-3.5 w-3.5 shrink-0 text-zinc-600"
-        strokeWidth={2.4}
-      />
-    </a>
+    </span>
   );
 }

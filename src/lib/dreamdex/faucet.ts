@@ -22,13 +22,6 @@ export const FAUCET_CLAIM = 10_000;
 export const FAUCET_AVAILABLE = NETWORK_NAME === "testnet";
 
 /**
- * Gas is the one thing this app cannot hand out: STT is minted by Somnia's own
- * faucet, behind a captcha, and a wallet with no gas cannot even call the
- * collateral faucet below.
- */
-export const GAS_FAUCET_URL = "https://testnet.somnia.network/";
-
-/**
  * Mint test collateral to the signer.
  *
  * A wallet created behind a Telegram login has no funding route of its own —
@@ -72,7 +65,11 @@ export function faucetErrorMessage(error: unknown): string {
   }
 
   if (isOutOfGasFunds(error)) {
-    return `You need a little ${NETWORK.chain.nativeCurrency.symbol} for gas before you can claim — the link above has it free.`;
+    // Gas is sponsored, so this is the app's failure, not the player's — and
+    // there is nothing they can do about it but wait. Never send them to a
+    // public faucet: every one of them wants a browser wallet to connect, and
+    // inside Telegram there is none.
+    return "We cover the gas here, and that ran dry for a moment. Try again shortly.";
   }
 
   if (error instanceof ContractRevertError) {
