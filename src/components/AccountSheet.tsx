@@ -7,7 +7,6 @@ import {
   Check,
   Copy,
   Droplets,
-  Fuel,
   Loader2,
   LogOut,
   Wallet,
@@ -46,6 +45,10 @@ interface AccountSheetProps {
  * created for them has no other route to its address, so the two ways of moving
  * one between devices — scanning it and copying it — are the whole top half of
  * the sheet, and everything else sits underneath.
+ *
+ * There is exactly one token on this screen. Gas is bought by the app on the
+ * player's behalf, so the chain's own currency is never named, never counted,
+ * and never something anybody has to go and find.
  */
 export function AccountSheet({
   balance,
@@ -215,7 +218,9 @@ export function AccountSheet({
           </motion.button>
 
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-zinc-900 pt-4">
-            <span className="text-[12px] font-medium text-zinc-500">Balance</span>
+            <span className="text-[12px] font-medium text-zinc-500">
+              Balance to bet with
+            </span>
             <span className="tnum text-[20px] font-bold tracking-tight">
               {balance === null ? (
                 <span className="inline-block h-5 w-20 animate-pulse rounded bg-zinc-900 align-middle" />
@@ -280,23 +285,6 @@ export function AccountSheet({
             )}
           </AnimatePresence>
 
-          {/* Two different tokens do two different jobs here, and only one of
-              them is obvious — a funded balance with no gas still cannot bet.
-              Neither is the player's errand: the collateral is a tap above and
-              the gas is the app's problem, so these only say what is what. */}
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <FundingHint
-              token={NETWORK.collateral.symbol}
-              purpose="to bet with"
-              icon={<Wallet className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            />
-            <FundingHint
-              token={NETWORK.chain.nativeCurrency.symbol}
-              purpose="for gas"
-              icon={<Fuel className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            />
-          </div>
-
           {/* Deliberately last, quiet, and its own tap. It used to be what the
               top bar did when you touched it, which meant the likeliest tap in
               the app ended the session. */}
@@ -319,24 +307,3 @@ export function AccountSheet({
   );
 }
 
-function FundingHint({
-  token,
-  purpose,
-  icon,
-}: {
-  token: string;
-  purpose: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <span className="flex items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/50 px-3 py-2">
-      <span className="shrink-0 text-zinc-600">{icon}</span>
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-[12px] font-bold">{token}</span>
-        <span className="block truncate text-[10px] font-medium text-zinc-500">
-          {purpose}
-        </span>
-      </span>
-    </span>
-  );
-}

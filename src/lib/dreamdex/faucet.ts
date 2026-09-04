@@ -65,11 +65,10 @@ export function faucetErrorMessage(error: unknown): string {
   }
 
   if (isOutOfGasFunds(error)) {
-    // Gas is sponsored, so this is the app's failure, not the player's — and
-    // there is nothing they can do about it but wait. Never send them to a
-    // public faucet: every one of them wants a browser wallet to connect, and
-    // inside Telegram there is none.
-    return "We cover the gas here, and that ran dry for a moment. Try again shortly.";
+    // Gas is the app's problem and stays in the app's own vocabulary: a player
+    // cannot act on it and has no reason to learn what it is. All they need is
+    // that this one was ours, not theirs, and that trying again is worth it.
+    return "That one is on us — something went wrong on our side. Try again in a moment.";
   }
 
   if (error instanceof ContractRevertError) {
