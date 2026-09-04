@@ -7,6 +7,7 @@ import { buySideFor, descale, toRaw } from "../src/lib/dreamdex/book.ts";
 import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
 import { countdownTicks, windowLabel } from "../src/lib/format.ts";
+import type { BinaryMarket } from "@somnia-chain/markets-sdk";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 import { typicalMovePct, distancePct, minutesOfMovement, closeness, outcomeStreak, readPulse, formatPctValue } from "../src/lib/pulse.ts";
 
@@ -189,6 +190,18 @@ ok("the copy names the window the bet actually went into", (() => {
 ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
+
+// --- the line a window settles against, per resolution mode ---
+//
+// A fixed-strike market carries its line in the question and never posts a
+// reference print, so `posted` is false on it forever. Requiring `posted`
+// regardless of mode made every fixed-strike window unbettable — the app sat
+// on "waiting for this window's opening price" holding a row with the price in
+// it. The 5-minute series is fixed-strike, so that was half the board.
+ok("a fixed-strike window's line is its strike, with no opening print needed",
+   marketBoundary({ marketId: "0xabc", strike: "7976524" } as unknown as BinaryMarket, {}) === 79765.24);
+ok("a reference window with nothing posted still has no line",
+   marketBoundary({ marketId: "0xdef", strike: "0" } as unknown as BinaryMarket, { "0xdef": null }) === null);
 
 // --- the market pulse: arithmetic on real prints, and the words it produces ---
 //
@@ -444,8 +457,16 @@ for (const asset of TRADABLE_ASSETS) {
 
   const opening = await ex.client.getOpeningPrices([picked.marketId]);
   const boundary = marketBoundary(picked, opening);
-  ok(`${asset}: reference window exposes a posted opening price`,
-     picked.mode !== "reference" || boundary !== null, `boundary=${boundary}`);
+  // Split by mode, because only one of them is allowed to be missing a line:
+  // a reference window genuinely has none for its first seconds, a fixed one
+  // never does. The old single assertion could not fail on a fixed market at
+  // all, which is how it passed all day while they were unbettable.
+  ok(`${asset}: a fixed-strike window exposes its line at once`,
+     picked.mode !== "fixed" || boundary !== null, `mode=${picked.mode} boundary=${boundary}`);
+  ok(`${asset}: a reference window's line is a real price once posted`,
+     picked.mode !== "reference" || boundary === null || boundary > 0, `boundary=${boundary}`);
+  ok(`${asset}: the window the app picked can actually be bet`,
+     boundary !== null || picked.mode === "reference", `mode=${picked.mode} boundary=${boundary}`);
 
   // The boundary must be on the same scale as the price the chart plots, or
   // the strike line lands somewhere meaningless.
@@ -485,24 +506,40 @@ for (const asset of TRADABLE_ASSETS) {
 }
 
 // --- the verdict: read off the contract, and it matches the prices ---
-const settled = await ex.client.listPastBinaryMarkets({ asset: "BTC", intervalSec: APP_CADENCE_SECONDS, limit: 6 });
-const sIds = settled.map((m) => m.marketId);
-const [opens, closes] = await Promise.all([
-  ex.client.getOpeningPrices(sIds),
-  ex.client.getResolutionPrices(sIds),
-]);
+// Across the cadences the app trades, not just the preferred one: the 15m
+// series spends stretches voiding every window, and a check that can only read
+// that series reports the venue's mood rather than this code's correctness.
+//
+// Each mode is checked against the line it actually settles on — a reference
+// window against its opening print, a fixed-strike window against its strike.
+// Reading only the opening price is what let the boundary bug above hide.
 let checkedVerdicts = 0;
-for (const raw of settled) {
-  const m = toDreamdexMarket(raw);
-  const dir = resolvedDirection(m);
-  const o = opens[m.marketId.toLowerCase()];
-  const c = closes[m.marketId.toLowerCase()];
-  if (dir === null || o === null || c === null || o === undefined || c === undefined) continue;
-  checkedVerdicts++;
-  // "closes at or above its opening price" — outcome 0 (YES) must mean UP.
-  ok(`settled window: contract verdict matches open vs close`,
-     dir === (Number(c) >= Number(o) ? "up" : "down"),
-     `${dir} open=${o} close=${c} winningOutcome=${m.winningOutcome}`);
+for (const intervalSec of TRADED_CADENCES) {
+  if (checkedVerdicts >= 3) break;
+  const settled = await ex.client.listPastBinaryMarkets({ asset: "BTC", intervalSec, limit: 6 });
+  const sIds = settled.map((m) => m.marketId);
+  const [opens, closes] = await Promise.all([
+    ex.client.getOpeningPrices(sIds),
+    ex.client.getResolutionPrices(sIds),
+  ]);
+
+  for (const raw of settled) {
+    const m = toDreamdexMarket(raw);
+    const dir = resolvedDirection(m);
+    const c = closes[m.marketId.toLowerCase()];
+    if (dir === null || c === null || c === undefined) continue;
+
+    const line = m.mode === "fixed"
+      ? Number(raw.strike)
+      : Number(opens[m.marketId.toLowerCase()] ?? Number.NaN);
+    if (!Number.isFinite(line) || line <= 0) continue;
+
+    checkedVerdicts++;
+    // "closes at or above the line" — outcome 0 (YES) must mean UP.
+    ok(`settled ${intervalSec}s ${m.mode} window: verdict matches close vs line`,
+       dir === (Number(c) >= line ? "up" : "down"),
+       `${dir} line=${line} close=${c} winningOutcome=${m.winningOutcome}`);
+  }
 }
 ok("at least one settled window was cross-checked", checkedVerdicts > 0);
 

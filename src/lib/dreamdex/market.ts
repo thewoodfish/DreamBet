@@ -230,7 +230,15 @@ export function marketBoundary(
   openingPrices: Record<string, string | null>
 ): number | null {
   const boundary = boundaryPrice(market, openingPrices);
-  if (!boundary || !boundary.posted) return null;
+  if (!boundary) return null;
+
+  // `posted` describes the reference print, and only a reference market has
+  // one. A fixed-strike market carries its line in the question itself and
+  // comes back as posted:false forever, so requiring it made every fixed-strike
+  // window unbettable — the app sat on "waiting for this window's opening
+  // price" against a market whose line was in the row it was holding.
+  const mode = binaryResolutionMode(market.strike) as ResolutionMode;
+  if (mode === "reference" && !boundary.posted) return null;
 
   const value = Number(boundary.raw) / STRIKE_SCALE;
   return Number.isFinite(value) && value > 0 ? value : null;
