@@ -18,6 +18,7 @@ import { StatsStrip } from "@/components/StatsStrip";
 import { TopBar } from "@/components/TopBar";
 import { TradeTicket } from "@/components/TradeTicket";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
+import { recordBet } from "@/lib/board/client";
 import { useDreamdexWindow } from "@/hooks/useDreamdexWindow";
 import { useEventWindow } from "@/hooks/useEventWindow";
 import { usePriceFeed } from "@/hooks/usePriceFeed";
@@ -136,6 +137,22 @@ export default function Home() {
     });
     // Whatever brought them here has been answered.
     setChallenge(null);
+
+    // Filed, not awaited. The bet is already on-chain; the standings are a
+    // record of it, and a slow write must not sit between the player and their
+    // own share card.
+    if (account.address) {
+      void recordBet({
+        address: account.address,
+        handle: username,
+        marketId: market.marketId,
+        side: ticket,
+        stake: fill.cost,
+        shares: fill.shares,
+        hash: fill.hash,
+        chatInstance: telegram.chatInstance,
+      });
+    }
   }
 
   function resetRound() {
@@ -384,6 +401,8 @@ export default function Home() {
               scope={scope}
               onScopeChange={setScope}
               groupAvailable={groupAvailable}
+              chatInstance={telegram.chatInstance}
+              address={account.address}
               onClose={() => setSheetOpen(false)}
             />
           )}

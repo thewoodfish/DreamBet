@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { createWalletClient, formatEther, http, isAddress, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { publicClient } from "@/lib/dreamdex/client";
 import { NETWORK, NETWORK_NAME } from "@/lib/dreamdex/config";
+import { telegramAuthConfigured, verifyTelegram } from "@/lib/server/telegram";
 
 /** Holds a private key, so it must never be prerendered or cached. */
 export const runtime = "nodejs";
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
   // the signature is Telegram's own, over launch data this app never mints. In
   // local preview there is no token and no signature to check, so the balance
   // ceiling and the cooldown below are the whole of the defence.
-  if (process.env.TELEGRAM_BOT_TOKEN && !fromTelegram(body.initData)) {
+  if (telegramAuthConfigured && !verifyTelegram(body.initData)) {
     return NextResponse.json(
       { funded: false, reason: "unverified" },
       { status: 403 }
@@ -176,42 +176,5 @@ export async function POST(request: Request) {
       { funded: false, reason: "failed" },
       { status: 502 }
     );
-  }
-}
-
-/**
- * Telegram's own signature over the launch payload, per its Mini Apps spec:
- * the secret is the bot token keyed by "WebAppData", and the signed message is
- * every field but `hash`, sorted, joined by newlines.
- */
-function fromTelegram(initData: string | undefined): boolean {
-  if (!initData) return false;
-
-  try {
-    const params = new URLSearchParams(initData);
-    const hash = params.get("hash");
-    if (!hash) return false;
-    params.delete("hash");
-
-    // A signature stays valid forever unless it is aged out, and a leaked one
-    // would otherwise be a permanent key to the sponsor's wallet.
-    const authDate = Number(params.get("auth_date") ?? 0);
-    if (!authDate || Date.now() / 1000 - authDate > 86_400) return false;
-
-    const check = [...params.entries()]
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([k, v]) => `${k}=${v}`)
-      .join("\n");
-
-    const secret = createHmac("sha256", "WebAppData")
-      .update(process.env.TELEGRAM_BOT_TOKEN as string)
-      .digest();
-    const expected = createHmac("sha256", secret).update(check).digest("hex");
-
-    const a = Buffer.from(expected, "hex");
-    const b = Buffer.from(hash, "hex");
-    return a.length === b.length && timingSafeEqual(a, b);
-  } catch {
-    return false;
   }
 }

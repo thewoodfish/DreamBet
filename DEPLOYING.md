@@ -46,6 +46,8 @@ every player.
 | `GAS_SPONSOR_PRIVATE_KEY` | Key of the wallet paying everyone's gas. Fund the address with STT |
 | `TELEGRAM_BOT_TOKEN` | From BotFather. Without it, `/api/fund` drips to any address that asks |
 | `GAS_SPONSOR_TARGET_STT` | Optional. What a wallet is topped up to, default `0.15` |
+| `KV_REST_API_URL` | Upstash Redis, for the group leaderboard. Added from the Vercel Marketplace, which injects this and the token |
+| `KV_REST_API_TOKEN` | As above. Unset, betting is unaffected and standings show samples |
 
 `GET /api/fund` reports the sponsor's address, its balance and how many players
 are left in it — the one number to check before a demo.

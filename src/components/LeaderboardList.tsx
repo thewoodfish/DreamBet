@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Flame } from "lucide-react";
+import { Flame, Loader2 } from "lucide-react";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 import {
   MOCK_LEADERBOARD,
   SCOPE_LABELS,
@@ -18,14 +19,26 @@ interface LeaderboardListProps {
   /** False when the app wasn't launched from a group chat, so there is no
       chat_instance to scope by and "This group" can't be offered. */
   groupAvailable?: boolean;
+  /** Telegram's id for the chat this was launched from — what "this group"
+      means. */
+  chatInstance?: string | null;
+  /** The player, so their own row can be found and pinned. */
+  address?: string | null;
 }
 
 export function LeaderboardList({
   scope,
   onScopeChange,
   groupAvailable = true,
+  chatInstance = null,
+  address = null,
 }: LeaderboardListProps) {
-  const rows = MOCK_LEADERBOARD[scope];
+  const board = useLeaderboard(scope, chatInstance, address);
+
+  // Real standings whenever there is a store to hold them. The mocks stay for
+  // the preview build, where an empty table would read as a broken screen
+  // rather than as an app nobody has bet in yet.
+  const rows = board.unavailable ? MOCK_LEADERBOARD[scope] : board.rows;
   const top = rows.filter((r) => !r.isYou);
   const you = rows.find((r) => r.isYou);
 
@@ -57,11 +70,26 @@ export function LeaderboardList({
         })}
       </div>
 
-      <ul className="no-scrollbar mt-3 min-h-0 flex-1 overflow-y-auto">
-        {top.map((entry) => (
-          <Row key={entry.address} entry={entry} />
-        ))}
-      </ul>
+      {board.loading && !board.unavailable && rows.length === 0 ? (
+        <p className="flex flex-1 items-center justify-center gap-2 text-[12px] font-medium text-zinc-600">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.4} />
+          Reading the standings
+        </p>
+      ) : rows.length === 0 ? (
+        // A settled bet is what puts somebody on this table, so an empty one
+        // says which of the two is missing rather than just "no data".
+        <p className="flex flex-1 items-center justify-center px-6 text-center text-[12px] font-medium leading-relaxed text-zinc-600">
+          {scope === "group"
+            ? "Nobody in this chat has had a bet settle yet. Be the first."
+            : "No bets have settled yet. Yours could be the first."}
+        </p>
+      ) : (
+        <ul className="no-scrollbar mt-3 min-h-0 flex-1 overflow-y-auto">
+          {top.map((entry) => (
+            <Row key={entry.address} entry={entry} />
+          ))}
+        </ul>
+      )}
 
       {/* Pinned so you always see where you stand, however far down you are. */}
       {you && (

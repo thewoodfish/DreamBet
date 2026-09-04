@@ -66,6 +66,19 @@ third-party venue that times out, goes stale and stops rolling windows on its
 own schedule — real information, but not a regression here, which is why CI
 runs them without gating on them.
 
+## Standings
+
+Private rounds are social, not on-chain. Everyone bets into the same public
+dreamDEX window — that is where the liquidity is, and a market invented for five
+friends would have nobody on the other side of it — and `POST /api/board`
+records which Telegram chat each bet came from so the table can be scored per
+group.
+
+Nothing on that table is taken on the player's word. A bet is written only once
+the chain confirms that exact transaction was sent by that exact address, and
+the result is never stored at all: outcomes are read back off the market when
+the table is built, so the one thing worth lying about cannot be sent.
+
 ## Deploying
 
 Telegram hosts nothing — a Mini App is a URL in a webview — so deployment is

@@ -18,6 +18,10 @@ interface RecordSheetProps {
   scope: LeaderboardScope;
   onScopeChange: (scope: LeaderboardScope) => void;
   groupAvailable?: boolean;
+  /** Telegram's id for the launching chat — what "this group" is scoped to. */
+  chatInstance?: string | null;
+  /** The player, so the standings can find their row. */
+  address?: string | null;
   onClose: () => void;
 }
 
@@ -34,6 +38,8 @@ export function RecordSheet({
   scope,
   onScopeChange,
   groupAvailable,
+  chatInstance,
+  address,
   onClose,
 }: RecordSheetProps) {
   return (
@@ -112,6 +118,8 @@ export function RecordSheet({
               scope={scope}
               onScopeChange={onScopeChange}
               groupAvailable={groupAvailable}
+              chatInstance={chatInstance}
+              address={address}
             />
           )}
         </div>
