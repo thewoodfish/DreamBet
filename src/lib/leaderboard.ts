@@ -52,6 +52,22 @@ export function avatarTint(address: string): string {
 }
 
 /**
+ * What one settled bet was worth, in collateral.
+ *
+ * A win returns the outcome tokens bought and costs the stake; a loss costs the
+ * stake; a void costs nothing, because nobody was wrong. Shared by the
+ * standings and the history so the same bet can never be worth two different
+ * numbers on two screens.
+ */
+export function betNet(
+  bet: { side: string; stake: number; shares: number },
+  verdict: "up" | "down" | "void"
+): number {
+  if (verdict === "void") return 0;
+  return verdict === bet.side ? bet.shares - bet.stake : -bet.stake;
+}
+
+/**
  * Consecutive wins ending at the most recent settled bet, which is what a
  * streak is. Results come newest-first, so it reads off the front.
  */

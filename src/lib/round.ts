@@ -41,6 +41,11 @@ export interface HistoryEntry {
   direction: Direction;
   stake: number;
   won: boolean;
+  /**
+   * The window settled as a void — the oracle posted no answer and the stake
+   * came back. Neither a win nor a loss, and it must not be drawn as one.
+   */
+  voided?: boolean;
   /** Net collateral: positive on a win, negative on a loss. */
   net: number;
   /** Pre-formatted relative label — keeps the list free of clock-dependent

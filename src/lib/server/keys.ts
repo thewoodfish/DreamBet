@@ -9,8 +9,5 @@
 
 export const betKey = (hash: string) => `bet:${hash.toLowerCase()}`;
 
-export const verdictKey = (marketId: string) =>
-  `verdict:${marketId.toLowerCase()}`;
-
 export const listKey = (group: string | null) =>
   group ? `board:group:${group}` : "board:global";

@@ -14,6 +14,12 @@ export interface BetRecord {
   /** Telegram handle at the time of the bet, when there was one. */
   handle: string | null;
   marketId: string;
+  /**
+   * The pair this went into. Recoverable from the market, but records written
+   * before this field existed have to fall back to that read — so it is
+   * optional, and the history route resolves it either way.
+   */
+  symbol?: string;
   side: Direction;
   /** Collateral actually spent. */
   stake: number;

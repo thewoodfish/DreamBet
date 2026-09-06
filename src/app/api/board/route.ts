@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-import { publicClient, exchange } from "@/lib/dreamdex/client";
-import { resolvedDirection, toDreamdexMarket } from "@/lib/dreamdex/market";
+import { publicClient } from "@/lib/dreamdex/client";
+import { isTradableAsset } from "@/lib/dreamdex/config";
 import { verifyTelegram, telegramAuthConfigured } from "@/lib/server/telegram";
 import {
   pushFront,
   readFront,
-  readJson,
   readManyJson,
   storeConfigured,
   trim,
   writeJson,
 } from "@/lib/server/store";
-import { betKey, listKey, verdictKey } from "@/lib/server/keys";
+import { betKey, listKey } from "@/lib/server/keys";
+import { settledFactsFor } from "@/lib/server/verdicts";
 import type { BetRecord, Verdict } from "@/lib/board/types";
-import { bestStreakOf, streakOf } from "@/lib/leaderboard";
+import { bestStreakOf, betNet, streakOf } from "@/lib/leaderboard";
 import type { LeaderboardEntry } from "@/lib/leaderboard";
 
 export const runtime = "nodejs";
@@ -90,6 +90,13 @@ export async function POST(request: Request) {
     address: address.toLowerCase(),
     handle: typeof body.handle === "string" ? body.handle.slice(0, 32) : null,
     marketId: marketId.toLowerCase(),
+    // Written down rather than looked up later. Only assets this app trades are
+    // accepted, so a forged one cannot reach a history row and pick the icon it
+    // renders with; anything else falls back to the market's own answer.
+    symbol:
+      typeof body.symbol === "string" && isTradableAsset(body.symbol)
+        ? body.symbol
+        : undefined,
     side,
     stake: Number(body.stake) || 0,
     shares: Number(body.shares) || 0,
@@ -133,52 +140,17 @@ export async function GET(request: Request) {
   const hashes = await readFront(listKey(scope === "group" ? group : null), PAGE);
   const bets = await readManyJson<BetRecord>(hashes.map(betKey));
 
-  const verdicts = await verdictsFor([...new Set(bets.map((b) => b.marketId))]);
+  const facts = await settledFactsFor([
+    ...new Set(bets.map((b) => b.marketId)),
+  ]);
+  const verdicts = new Map(
+    [...facts].map(([id, fact]) => [id, fact.verdict] as const)
+  );
 
   return NextResponse.json({
     rows: rank(bets, verdicts, me?.toLowerCase() ?? null),
     unavailable: false,
   });
-}
-
-/**
- * What each market decided, cached once it has decided something.
- *
- * A finalised market never changes its mind, so its verdict is written down
- * permanently; an open one is simply absent, and the bets on it sit out of the
- * scoring until it settles.
- */
-async function verdictsFor(
-  marketIds: string[]
-): Promise<Map<string, Verdict>> {
-  const verdicts = new Map<string, Verdict>();
-
-  await Promise.all(
-    marketIds.map(async (id) => {
-      const cached = await readJson<Verdict>(verdictKey(id));
-      if (cached) {
-        verdicts.set(id, cached);
-        return;
-      }
-
-      try {
-        const raw = await exchange.client.getMarket(id);
-        if (!raw || raw.marketType !== "BINARY") return;
-
-        const market = toDreamdexMarket(raw);
-        const winner = resolvedDirection(market);
-        if (winner === null && !market.voided) return;
-
-        const verdict: Verdict = market.voided ? "void" : (winner as Verdict);
-        verdicts.set(id, verdict);
-        await writeJson(verdictKey(id), verdict);
-      } catch {
-        // Unreadable market: its bets stay unscored rather than counted wrong.
-      }
-    })
-  );
-
-  return verdicts;
 }
 
 /**
@@ -219,11 +191,11 @@ function rank(
 
     const verdict = verdicts.get(bet.marketId);
     if (verdict) {
-      if (verdict === "void") {
-        tally.netPnl += 0;
-      } else {
+      tally.netPnl += betNet(bet, verdict);
+      // A void is not a round anybody played, so it counts towards neither the
+      // win rate nor the streak.
+      if (verdict !== "void") {
         const won = verdict === bet.side;
-        tally.netPnl += won ? bet.shares - bet.stake : -bet.stake;
         tally.settled += 1;
         tally.wins += won ? 1 : 0;
         tally.results.push(won);

@@ -177,14 +177,22 @@ function HistoryRow({ entry }: { entry: HistoryEntry }) {
         </span>
       </span>
 
-      <span
-        className={`tnum shrink-0 text-[14px] font-bold ${
-          entry.won ? "text-up-soft" : "text-zinc-600"
-        }`}
-      >
-        {entry.net >= 0 ? "+" : "−"}
-        {formatUsd(Math.abs(entry.net))}
-      </span>
+      {/* A void returned the stake — neither a win nor a loss, and drawing it
+          as a red zero would tell the player they lost a round nobody played. */}
+      {entry.voided ? (
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
+          Void
+        </span>
+      ) : (
+        <span
+          className={`tnum shrink-0 text-[14px] font-bold ${
+            entry.won ? "text-up-soft" : "text-zinc-600"
+          }`}
+        >
+          {entry.net >= 0 ? "+" : "−"}
+          {formatUsd(Math.abs(entry.net))}
+        </span>
+      )}
     </li>
   );
 }

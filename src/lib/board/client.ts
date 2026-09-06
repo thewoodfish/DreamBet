@@ -8,6 +8,8 @@ export interface RecordBetInput {
   address: string;
   handle: string | null;
   marketId: string;
+  /** The pair, so the history list need not re-derive it per row. */
+  symbol: string;
   side: Direction;
   stake: number;
   shares: number;
@@ -32,6 +34,38 @@ export async function recordBet(bet: RecordBetInput): Promise<void> {
     });
   } catch {
     // Standings are decoration on top of a bet that already happened.
+  }
+}
+
+/** One settled bet of the player's own, as the record sheet lists it. */
+export interface HistoryRow {
+  id: string;
+  symbol: string;
+  direction: Direction;
+  stake: number;
+  won: boolean;
+  voided: boolean;
+  net: number;
+  /** Unix ms. Turned into "15m ago" on the client, where "now" is knowable. */
+  ts: number;
+}
+
+export interface HistoryResult {
+  rows: HistoryRow[];
+  unavailable: boolean;
+}
+
+/** The player's own settled bets, newest first. */
+export async function fetchHistory(me: string): Promise<HistoryResult> {
+  try {
+    const response = await fetch(
+      `/api/board/history?me=${encodeURIComponent(me)}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return { rows: [], unavailable: true };
+    return (await response.json()) as HistoryResult;
+  } catch {
+    return { rows: [], unavailable: true };
   }
 }
 

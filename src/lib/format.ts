@@ -84,3 +84,24 @@ export function countdownTicks(windowSeconds: number, fallback = 15): number {
   }
   return fallback;
 }
+
+/**
+ * "just now", "15m ago", "3h ago", "2d ago".
+ *
+ * Client-only by nature: the server has no business guessing what "now" is, and
+ * a timestamp rendered on both sides of hydration would disagree by exactly the
+ * time the request took.
+ */
+export function formatRelativeTime(ts: number, now = Date.now()): string {
+  const seconds = Math.max(Math.floor((now - ts) / 1000), 0);
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}

@@ -8,7 +8,8 @@ import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
 import { countdownTicks, windowLabel } from "../src/lib/format.ts";
 import { rememberPosition, recallPosition, forgetPosition } from "../src/lib/position-store.ts";
-import { streakOf, bestStreakOf } from "../src/lib/leaderboard.ts";
+import { streakOf, bestStreakOf, betNet } from "../src/lib/leaderboard.ts";
+import { formatRelativeTime } from "../src/lib/format.ts";
 import type { BinaryMarket } from "@somnia-chain/markets-sdk";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 import { typicalMovePct, distancePct, minutesOfMovement, closeness, outcomeStreak, readPulse, formatPctValue } from "../src/lib/pulse.ts";
@@ -192,6 +193,36 @@ ok("the copy names the window the bet actually went into", (() => {
 ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
+
+// --- what a settled bet was worth, shared by the standings and the history ---
+//
+// One bet must never be worth two different numbers on two screens, which is
+// why both read this. A win returns the tokens bought and costs the stake.
+{
+  const won = { side: "down", stake: 10, shares: 18.5 };
+  ok("a winning bet returns its shares less the stake",
+     betNet(won, "down") === 8.5);
+  ok("a losing bet costs exactly the stake",
+     betNet({ side: "up", stake: 25, shares: 41 }, "down") === -25);
+  ok("a void costs nothing, whichever side it was on",
+     betNet(won, "void") === 0 &&
+     betNet({ side: "up", stake: 40, shares: 70 }, "void") === 0);
+  // The losing case must not quietly return the shares it never got.
+  ok("a loss is never softened by the shares that did not pay",
+     betNet({ side: "up", stake: 5, shares: 1000 }, "down") === -5);
+}
+
+// --- when a bet happened, said the way a person would ---
+{
+  const now = Date.UTC(2026, 8, 6, 12, 0, 0);
+  const ago = (ms: number) => formatRelativeTime(now - ms, now);
+  ok("a bet from seconds ago is just now", ago(20_000) === "just now");
+  ok("minutes read as minutes", ago(15 * 60_000) === "15m ago");
+  ok("an hour is not sixty minutes", ago(3 * 3600_000) === "3h ago");
+  ok("a day is not twenty-four hours", ago(2 * 86_400_000) === "2d ago");
+  ok("a clock that disagrees does not produce a negative age",
+     formatRelativeTime(now + 60_000, now) === "just now");
+}
 
 // --- the streak: the number that decides whether tomorrow's round matters ---
 //

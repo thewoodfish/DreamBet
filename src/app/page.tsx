@@ -21,6 +21,7 @@ import { TradeTicket } from "@/components/TradeTicket";
 import { useAssetLiveness, type AssetLivenessMap } from "@/hooks/useAssetLiveness";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
 import { useMarketPulse } from "@/hooks/useMarketPulse";
+import { usePlayerHistory } from "@/hooks/usePlayerHistory";
 import { usePlayerRecord } from "@/hooks/usePlayerRecord";
 import { recordBet } from "@/lib/board/client";
 import { useDreamdexWindow } from "@/hooks/useDreamdexWindow";
@@ -39,7 +40,6 @@ import type { BetFill } from "@/lib/dreamdex/trade";
 import { DEFAULT_ASSET, getAsset, type AssetSymbol } from "@/lib/assets";
 import type { LeaderboardScope } from "@/lib/leaderboard";
 import {
-  MOCK_HISTORY,
   MOCK_STAKE,
   isAhead,
   netResult,
@@ -149,6 +149,9 @@ export default function Home() {
   // The player's own record, from bets the chain confirmed. Falls back to the
   // sample figures when there are no standings to read.
   const record = usePlayerRecord(account.address);
+  // The receipts behind those figures. Read together so the tiles and the list
+  // beneath them can never describe two different histories.
+  const history = usePlayerHistory(account.address);
 
   // Streak only advances on a win, and resets to zero on a loss. Counted off
   // the record as it stood before this window, because the standings have not
@@ -218,6 +221,7 @@ export default function Home() {
         address: account.address,
         handle: username,
         marketId: market.marketId,
+        symbol,
         side: ticket,
         stake: fill.cost,
         shares: fill.shares,
@@ -237,8 +241,10 @@ export default function Home() {
     // on the next launch.
     forgetPosition();
     // That result is now part of the record, so the streak on the strip above
-    // should be the new one rather than the one this round started with.
+    // should be the new one rather than the one this round started with — and
+    // the round itself should appear in the list.
     record.refresh();
+    history.refresh();
   }
 
   function handleSelectAsset(next: AssetSymbol) {
@@ -551,7 +557,7 @@ export default function Home() {
             <RecordSheet
               key="record-sheet"
               stats={record.stats}
-              history={MOCK_HISTORY}
+              history={history.entries}
               tab={sheetTab}
               onTabChange={setSheetTab}
               scope={scope}
