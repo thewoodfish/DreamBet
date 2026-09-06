@@ -288,7 +288,12 @@ export default function Home() {
           }`}
         />
 
-        <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* Scrolls only when it has to. There is enough room on a normal phone
+            for none of this to move — the countdown and the buttons are meant
+            to stay put — but a short viewport (Telegram's sheet before it
+            expands, a small device, a keyboard) used to clip the bottom of the
+            screen away with no way to reach it. */}
+        <div className="no-scrollbar relative flex min-h-0 flex-1 flex-col overflow-y-auto">
           <TopBar
             balance={balance}
             fallbackAddress={MOCK_WALLET}
@@ -320,8 +325,16 @@ export default function Home() {
           />
 
           {/* The price card flexes to absorb slack, so the layout stays tight
-              from an iPhone SE up to a Pro Max without dead space. */}
-          <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto py-3">
+              from an iPhone SE up to a Pro Max without dead space. It no longer
+              gives up its own height first, before anything else has to move:
+              the widget compresses its chart down to its own floor, so a
+              medium screen still shows the buttons without scrolling at all.
+              It clips rather than scrolling, because a nested scroller here
+              swallows the drag that was meant to move the screen — and it
+              stops at a floor, because with none it went on giving until the
+              price itself was a 24-pixel sliver and the screen still would not
+              move. Past the floor it is the screen's turn to scroll. */}
+          <div className="flex min-h-[180px] flex-1 flex-col overflow-hidden py-3">
             <PriceWidget
               asset={asset}
               feed={feed}
@@ -330,7 +343,9 @@ export default function Home() {
             />
           </div>
 
-          <div className="space-y-3 pt-1">
+          {/* Never squeezed: when the screen is short this is what the player
+              scrolled down to find. */}
+          <div className="shrink-0 space-y-3 pb-2 pt-1">
             <AnimatePresence>
               {challenge && round === "open" && (
                 <ChallengeBanner

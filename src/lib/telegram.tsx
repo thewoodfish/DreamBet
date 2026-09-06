@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import {
+  expandViewport,
   hapticFeedback,
   init,
   initDataChatInstance,
@@ -79,6 +80,12 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       // Tells Telegram the app has painted, so it drops its own loading
       // placeholder. Anything below this is best-effort.
       if (miniAppReady.isAvailable()) miniAppReady();
+
+      // Telegram opens a Mini App in a half-height sheet and leaves it there
+      // until the app asks for the screen. Half a screen is not enough for this
+      // one: the countdown, the odds and both buttons all live below that fold,
+      // so an unexpanded launch shows a price and no way to bet on it.
+      if (expandViewport.isAvailable()) expandViewport();
 
       setSession({
         ready: true,

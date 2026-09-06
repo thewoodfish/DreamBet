@@ -29,7 +29,10 @@ export function AssetSelector({
 }: AssetSelectorProps) {
   return (
     // mx-5 puts the row on the same page margin as the price card below it.
-    <div className="no-scrollbar mx-5 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
+    // shrink-0 because a horizontal scroller is not protected by the usual
+    // min-height floor: on a short screen this row was squeezed to a four-pixel
+    // sliver rather than being something the screen scrolled to reach.
+    <div className="no-scrollbar mx-5 mt-3 flex shrink-0 snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
       {ASSETS.map((asset) => {
         const active = asset.symbol === selected;
         const paused = liveness[asset.symbol] === "paused";
