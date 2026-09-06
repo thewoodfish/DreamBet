@@ -21,6 +21,7 @@ import { TradeTicket } from "@/components/TradeTicket";
 import { useAssetLiveness, type AssetLivenessMap } from "@/hooks/useAssetLiveness";
 import { useCollateralBalance } from "@/hooks/useCollateralBalance";
 import { useMarketPulse } from "@/hooks/useMarketPulse";
+import { usePlayerRecord } from "@/hooks/usePlayerRecord";
 import { recordBet } from "@/lib/board/client";
 import { useDreamdexWindow } from "@/hooks/useDreamdexWindow";
 import { useEventWindow } from "@/hooks/useEventWindow";
@@ -40,7 +41,6 @@ import type { LeaderboardScope } from "@/lib/leaderboard";
 import {
   MOCK_HISTORY,
   MOCK_STAKE,
-  MOCK_STATS,
   isAhead,
   netResult,
   type Direction,
@@ -146,10 +146,16 @@ export default function Home() {
   // the window on offer will settle against.
   const shownStrike = position ? position.strike : boundary;
 
-  // Streak only advances on a win, and resets to zero on a loss.
+  // The player's own record, from bets the chain confirmed. Falls back to the
+  // sample figures when there are no standings to read.
+  const record = usePlayerRecord(account.address);
+
+  // Streak only advances on a win, and resets to zero on a loss. Counted off
+  // the record as it stood before this window, because the standings have not
+  // scored this settlement yet — they are re-read once the result is dismissed.
   const streak =
     position && settlement?.winner === position.direction
-      ? MOCK_STATS.streak + 1
+      ? record.stats.streak + 1
       : 0;
 
   /**
@@ -230,6 +236,9 @@ export default function Home() {
     // The result has been seen. Anything kept past this point would replay it
     // on the next launch.
     forgetPosition();
+    // That result is now part of the record, so the streak on the strip above
+    // should be the new one rather than the one this round started with.
+    record.refresh();
   }
 
   function handleSelectAsset(next: AssetSymbol) {
@@ -327,9 +336,20 @@ export default function Home() {
     setRound("settled");
     // The verdict is the one moment the phone should speak for itself. A loss
     // is a warning, not an error: nothing went wrong, the call just missed.
-    if (settlement.voided) haptic.tap();
-    else if (settlement.winner === position.direction) haptic.success();
-    else haptic.warning();
+    if (settlement.voided) {
+      haptic.tap();
+      return;
+    }
+    if (settlement.winner !== position.direction) {
+      haptic.warning();
+      return;
+    }
+
+    haptic.success();
+    // A second beat, timed to land with the number's overshoot, so a win is
+    // felt as well as seen. A loss gets one buzz and nothing after it.
+    const flourish = setTimeout(() => haptic.tap(), 190);
+    return () => clearTimeout(flourish);
   }, [round, settlement, position]);
 
   const ahead =
@@ -368,7 +388,7 @@ export default function Home() {
             }}
           />
           <StatsStrip
-            stats={MOCK_STATS}
+            stats={record.stats}
             onOpenRecord={() => {
               setSheetTab("record");
               setSheetOpen(true);
@@ -530,7 +550,7 @@ export default function Home() {
           {sheetOpen && (
             <RecordSheet
               key="record-sheet"
-              stats={MOCK_STATS}
+              stats={record.stats}
               history={MOCK_HISTORY}
               tab={sheetTab}
               onTabChange={setSheetTab}

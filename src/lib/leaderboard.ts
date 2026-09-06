@@ -14,6 +14,10 @@ export interface LeaderboardEntry {
   /** 0–1. */
   winRate: number;
   streak: number;
+  /** Longest run of wins on record. Absent on rows from before the server sent it. */
+  bestStreak?: number;
+  /** Settled bets behind the figures above. Voids are not rounds anybody played. */
+  rounds?: number;
   isYou: boolean;
 }
 
@@ -45,6 +49,30 @@ export function avatarTint(address: string): string {
     hash = (hash * 31 + address.charCodeAt(i)) >>> 0;
   }
   return AVATAR_TINTS[hash % AVATAR_TINTS.length];
+}
+
+/**
+ * Consecutive wins ending at the most recent settled bet, which is what a
+ * streak is. Results come newest-first, so it reads off the front.
+ */
+export function streakOf(results: boolean[]): number {
+  let streak = 0;
+  for (const won of results) {
+    if (!won) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+/** The longest run of wins anywhere in the record — the one worth bragging about. */
+export function bestStreakOf(results: boolean[]): number {
+  let best = 0;
+  let run = 0;
+  for (const won of results) {
+    run = won ? run + 1 : 0;
+    if (run > best) best = run;
+  }
+  return best;
 }
 
 export function initials(name: string): string {

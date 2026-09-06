@@ -13,6 +13,7 @@ import {
 } from "@/lib/server/store";
 import { betKey, listKey, verdictKey } from "@/lib/server/keys";
 import type { BetRecord, Verdict } from "@/lib/board/types";
+import { bestStreakOf, streakOf } from "@/lib/leaderboard";
 import type { LeaderboardEntry } from "@/lib/leaderboard";
 
 export const runtime = "nodejs";
@@ -242,16 +243,8 @@ function rank(
       netPnl: t.netPnl,
       winRate: t.settled ? t.wins / t.settled : 0,
       streak: streakOf(t.results),
+      bestStreak: bestStreakOf(t.results),
+      rounds: t.settled,
       isYou: me !== null && t.address === me,
     }));
-}
-
-/** Consecutive wins ending at the most recent bet, which is what a streak is. */
-function streakOf(results: boolean[]): number {
-  let streak = 0;
-  for (const won of results) {
-    if (!won) break;
-    streak += 1;
-  }
-  return streak;
 }

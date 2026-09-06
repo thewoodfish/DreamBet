@@ -8,6 +8,7 @@ import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
 import { countdownTicks, windowLabel } from "../src/lib/format.ts";
 import { rememberPosition, recallPosition, forgetPosition } from "../src/lib/position-store.ts";
+import { streakOf, bestStreakOf } from "../src/lib/leaderboard.ts";
 import type { BinaryMarket } from "@somnia-chain/markets-sdk";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 import { typicalMovePct, distancePct, minutesOfMovement, closeness, outcomeStreak, readPulse, formatPctValue } from "../src/lib/pulse.ts";
@@ -191,6 +192,24 @@ ok("the copy names the window the bet actually went into", (() => {
 ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
+
+// --- the streak: the number that decides whether tomorrow's round matters ---
+//
+// Results arrive newest-first, so the current streak reads off the front and
+// stops at the first loss. It was a hardcoded 4 until now, which is the app
+// claiming a history its player never lived.
+ok("a streak counts wins back from the most recent bet",
+   streakOf([true, true, true, false, true]) === 3);
+ok("a streak is zero the moment the last bet lost",
+   streakOf([false, true, true, true]) === 0);
+ok("no settled bets is no streak", streakOf([]) === 0);
+ok("an unbroken record is all of it", streakOf([true, true]) === 2);
+
+ok("the best run is the longest anywhere, not the current one",
+   bestStreakOf([false, true, true, true, false, true]) === 3);
+ok("the best run survives a loss at the front",
+   bestStreakOf([false, true, true]) === 2 && streakOf([false, true, true]) === 0);
+ok("no record is no best run", bestStreakOf([]) === 0);
 
 // --- the remembered bet: local storage is attacker-editable input ---
 //

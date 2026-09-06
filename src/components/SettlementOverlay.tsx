@@ -39,6 +39,17 @@ export function SettlementOverlay({
   const won = winner === position.direction;
   const net = netResult(position, winner);
 
+  /**
+   * Only a win gets the fanfare.
+   *
+   * The two results used to share one animation and differ by colour alone,
+   * which made winning feel exactly like losing — and this screen is the whole
+   * reason anybody plays a second round. A loss stays deliberately quiet: it is
+   * a miss, not a failure, and an app that performs at somebody who just lost
+   * money is an app they close.
+   */
+  const celebrate = won && !voided;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -47,16 +58,23 @@ export function SettlementOverlay({
       transition={{ duration: 0.2 }}
       className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-950/95 px-6 backdrop-blur-md"
     >
-      {/* Result-coloured bloom behind the number. */}
+      {/* Result-coloured bloom behind the number. A win's swells past its
+          resting size before settling; a loss simply arrives. */}
       <motion.div
         aria-hidden
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className={`pointer-events-none absolute h-72 w-72 rounded-full blur-3xl ${
-          won ? "bg-up/25" : "bg-down/20"
+        initial={{ opacity: 0, scale: celebrate ? 0.4 : 0.8 }}
+        animate={
+          celebrate
+            ? { opacity: 1, scale: [0.4, 1.18, 1] }
+            : { opacity: 1, scale: 1 }
+        }
+        transition={{ duration: celebrate ? 0.75 : 0.4, ease: "easeOut" }}
+        className={`pointer-events-none absolute rounded-full blur-3xl ${
+          celebrate ? "h-96 w-96 bg-up/30" : "h-64 w-64 bg-down/15"
         }`}
       />
+
+      {celebrate && <Sparks />}
 
       <motion.div
         initial={{ opacity: 0, scale: 0.86, y: 16 }}
@@ -82,14 +100,23 @@ export function SettlementOverlay({
           {voided ? "Round voided" : won ? "You won" : "Missed it"}
         </p>
 
-        <p
+        {/* The number is the payload. On a win it overshoots and settles, which
+            is what reads as a punch; on a loss it just fades up. */}
+        <motion.p
+          initial={{ scale: celebrate ? 0.5 : 1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={
+            celebrate
+              ? { type: "spring", stiffness: 420, damping: 11, delay: 0.16 }
+              : { duration: 0.3, ease: "easeOut", delay: 0.1 }
+          }
           className={`tnum mt-2 text-[52px] font-bold leading-none tracking-tight ${
             won ? "text-white" : "text-zinc-400"
           }`}
         >
           {net >= 0 ? "+" : "−"}
           {formatUsd(Math.abs(net))}
-        </p>
+        </motion.p>
         <p className="mt-1 text-[12px] font-medium text-zinc-500">
           {NETWORK.collateral.symbol}
         </p>
@@ -124,9 +151,13 @@ export function SettlementOverlay({
 
         {/* Streak is the thing that makes tomorrow's round matter. */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.32 }}
+          initial={{ opacity: 0, y: 8, scale: celebrate ? 0.7 : 1 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={
+            celebrate
+              ? { type: "spring", stiffness: 480, damping: 13, delay: 0.5 }
+              : { delay: 0.32 }
+          }
           className={`mt-6 flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-bold ${
             won && !voided
               ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
@@ -141,7 +172,7 @@ export function SettlementOverlay({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.42 }}
+        transition={{ delay: celebrate ? 0.6 : 0.42 }}
         className="absolute inset-x-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] space-y-2.5"
       >
         <motion.button
@@ -163,5 +194,39 @@ export function SettlementOverlay({
         </button>
       </motion.div>
     </motion.div>
+  );
+}
+
+/**
+ * Deterministic, so the burst is identical on every render and on both sides of
+ * hydration — a random scatter here would be a different screen each time React
+ * re-rendered, and this one is meant to be remembered.
+ */
+const SPARKS = Array.from({ length: 18 }, (_, i) => {
+  const angle = (i / 18) * Math.PI * 2;
+  const distance = 96 + ((i * 37) % 64);
+  return {
+    x: Math.cos(angle) * distance,
+    y: Math.sin(angle) * distance,
+    size: 4 + ((i * 13) % 4),
+    delay: 0.1 + (i % 6) * 0.035,
+  };
+});
+
+/** A one-off burst behind the number. Wins only, and gone inside a second. */
+function Sparks() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute">
+      {SPARKS.map((s, i) => (
+        <motion.span
+          key={i}
+          initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+          animate={{ opacity: [0, 1, 1, 0], x: s.x, y: s.y, scale: [0, 1, 1, 0.4] }}
+          transition={{ duration: 1, delay: s.delay, ease: "easeOut", times: [0, 0.15, 0.6, 1] }}
+          className="absolute rounded-full bg-up-soft"
+          style={{ width: s.size, height: s.size }}
+        />
+      ))}
+    </div>
   );
 }
