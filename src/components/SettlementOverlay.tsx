@@ -128,12 +128,26 @@ export function SettlementOverlay({
               answer for this window
               <br />
             </>
-          ) : (
+          ) : price !== null ? (
             <>
               {asset.pair} settled at{" "}
               <span className="tnum font-semibold text-zinc-300">
-                {price === null ? "—" : formatPrice(price, asset.decimals)}
+                {formatPrice(price, asset.decimals)}
               </span>
+              <br />
+            </>
+          ) : (
+            /* Not every window publishes a closing print — a fixed-strike one
+               resolves against its own question and posts no number. Saying
+               "settled at —" leaves a hole in the sentence on the screen people
+               screenshot; which side of the line it closed is the same fact
+               without the gap, and it comes off the contract's own verdict. */
+            <>
+              {asset.pair} closed{" "}
+              <span className="font-semibold text-zinc-300">
+                {winner === "up" ? "above" : "below"}
+              </span>{" "}
+              the line
               <br />
             </>
           )}
