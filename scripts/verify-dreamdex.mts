@@ -7,6 +7,7 @@ import { buySideFor, descale, toRaw } from "../src/lib/dreamdex/book.ts";
 import { fillOf, EmptyFillError } from "../src/lib/dreamdex/trade.ts";
 import { netResult } from "../src/lib/round.ts";
 import { countdownTicks, windowLabel } from "../src/lib/format.ts";
+import { rememberPosition, recallPosition, forgetPosition } from "../src/lib/position-store.ts";
 import type { BinaryMarket } from "@somnia-chain/markets-sdk";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 import { typicalMovePct, distancePct, minutesOfMovement, closeness, outcomeStreak, readPulse, formatPctValue } from "../src/lib/pulse.ts";
@@ -190,6 +191,74 @@ ok("the copy names the window the bet actually went into", (() => {
 ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
+
+// --- the remembered bet: local storage is attacker-editable input ---
+//
+// This record decides what the settlement takeover claims the player won. It
+// lives in a store they can edit by hand, so every field is checked on the way
+// back in and anything unexpected reads as "no open bet" rather than as a
+// position with a plausible-looking payout.
+{
+  const store = new Map<string, string>();
+  (globalThis as { window?: unknown }).window = {
+    localStorage: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    },
+  };
+
+  const good = {
+    symbol: "BTC" as const,
+    position: {
+      direction: "up" as const,
+      stake: 10,
+      marketId: "0xabc123" as `0x${string}`,
+      strike: 79765.24,
+      entryPrice: 79770,
+      payoutMultiplier: 1.85,
+      windowSeconds: 900,
+    },
+    expiresAt: Date.now() + 60_000,
+    placedAt: Date.now(),
+  };
+
+  rememberPosition(good);
+  const back = recallPosition();
+  ok("a remembered bet comes back with its stake and side intact",
+     back?.position.stake === 10 && back?.position.direction === "up" &&
+     back?.symbol === "BTC" && back?.position.payoutMultiplier === 1.85);
+
+  ok("nothing remembered is no open bet",
+     (forgetPosition(), recallPosition() === null));
+
+  // Each of these is a hand-edited record the overlay must refuse to dress up.
+  const tampered: [string, unknown][] = [
+    ["a stake that was never paid", { ...good, position: { ...good.position, stake: -5 } }],
+    ["a payout that loses on a win", { ...good, position: { ...good.position, payoutMultiplier: 0.2 } }],
+    ["an asset with no market", { ...good, symbol: "DOGE" }],
+    ["a market id that is not one", { ...good, position: { ...good.position, marketId: "not-a-market" } }],
+    ["a strike of zero", { ...good, position: { ...good.position, strike: 0 } }],
+    ["no position at all", { symbol: "BTC", expiresAt: 1, placedAt: 1 }],
+    ["not an object", "hello"],
+  ];
+  for (const [label, value] of tampered) {
+    (globalThis as { window: { localStorage: { setItem(k: string, v: string): void } } })
+      .window.localStorage.setItem("dreambet.position.v1", JSON.stringify(value));
+    ok(`a remembered bet is refused: ${label}`, recallPosition() === null);
+  }
+
+  // Garbage that is not even JSON must not throw on the way past.
+  (globalThis as { window: { localStorage: { setItem(k: string, v: string): void } } })
+    .window.localStorage.setItem("dreambet.position.v1", "{not json");
+  ok("an unparseable record is discarded rather than thrown", recallPosition() === null);
+
+  rememberPosition({ ...good, placedAt: Date.now() - 25 * 60 * 60 * 1000 });
+  ok("a bet older than a day is let go rather than ambushing its owner",
+     recallPosition() === null);
+
+  delete (globalThis as { window?: unknown }).window;
+}
 
 // --- the line a window settles against, per resolution mode ---
 //

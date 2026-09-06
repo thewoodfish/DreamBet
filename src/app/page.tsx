@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { AccountSheet } from "@/components/AccountSheet";
 import { AssetSelector } from "@/components/AssetSelector";
@@ -28,6 +28,11 @@ import { usePriceFeed } from "@/hooks/usePriceFeed";
 import { useSettlement } from "@/hooks/useSettlement";
 import { useDreamAccount } from "@/lib/account";
 import type { Challenge } from "@/lib/challenge";
+import {
+  forgetPosition,
+  recallPosition,
+  rememberPosition,
+} from "@/lib/position-store";
 import { haptic, useTelegram } from "@/lib/telegram";
 import type { BetFill } from "@/lib/dreamdex/trade";
 import { DEFAULT_ASSET, getAsset, type AssetSymbol } from "@/lib/assets";
@@ -64,6 +69,12 @@ export default function Home() {
   /** The challenge this session arrived on, until it is acted on or dismissed. */
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [scope, setScope] = useState<LeaderboardScope>("global");
+  /**
+   * This bet was placed in an earlier session and is only being seen now. Worth
+   * saying: a result that appears the instant the app opens, with no tap behind
+   * it, reads as a glitch unless it explains itself.
+   */
+  const [restored, setRestored] = useState(false);
 
   const asset = useMemo(() => getAsset(symbol), [symbol]);
   const feed = usePriceFeed(asset);
@@ -115,8 +126,16 @@ export default function Home() {
 
   // Only watched once the user is actually in a window, so an idle screen is
   // not polling for a verdict nobody is waiting on.
+  //
+  // Kept watched through `settled` as well, which is not optional: the arrival
+  // of a settlement is what moves the round to `settled`, so dropping the watch
+  // at that moment cleared the very verdict that caused the move and the
+  // takeover never rendered at all. The result the whole app is built around
+  // was unreachable, silently, in every state.
   const settlement = useSettlement(
-    round === "committed" && position ? position.marketId : null
+    position && (round === "committed" || round === "settled")
+      ? position.marketId
+      : null
   );
 
   // A window can only be bet into once its opening print exists — that print is
@@ -153,6 +172,24 @@ export default function Home() {
     });
     setTicket(null);
     setRound("committed");
+    setRestored(false);
+    // Survives the app being closed, which is what people do while a window
+    // runs. Written before anything that can fail, so the record exists even if
+    // the standings call or the share sheet never happens.
+    rememberPosition({
+      symbol,
+      position: {
+        direction: ticket,
+        stake: fill.cost,
+        marketId: market.marketId,
+        strike: boundary,
+        entryPrice: feed.price ?? boundary,
+        payoutMultiplier: fill.payoutMultiplier,
+        windowSeconds: market.windowSeconds,
+      },
+      expiresAt: market.expiry * 1000,
+      placedAt: Date.now(),
+    });
     // The stake has left the wallet; show that without waiting for the poll.
     collateral.refresh();
     // A bet that stays on one phone is worth nothing to this product, so the
@@ -189,9 +226,14 @@ export default function Home() {
     setTicket(null);
     setShare(null);
     setRound("open");
+    setRestored(false);
+    // The result has been seen. Anything kept past this point would replay it
+    // on the next launch.
+    forgetPosition();
   }
 
   function handleSelectAsset(next: AssetSymbol) {
+    restoredRef.current = false;
     setSymbol(next);
     // A challenge names one asset. Once the user has navigated away from it,
     // the banner is describing a screen they are no longer looking at.
@@ -232,6 +274,26 @@ export default function Home() {
   }
 
   /**
+   * A bet placed in an earlier session, picked up where it was left.
+   *
+   * Restored as `committed` and handed straight to the settlement watcher: if
+   * the window closed while the app was shut, the verdict is already on the
+   * contract and the result appears within a poll of opening. If it is still
+   * running, the position card and its countdown come back instead.
+   */
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    const remembered = recallPosition();
+    if (!remembered) return;
+
+    restoredRef.current = true;
+    setSymbol(remembered.symbol);
+    setPosition(remembered.position);
+    setRound("committed");
+    setRestored(true);
+  }, []);
+
+  /**
    * A challenge link decides which asset this session opens on — arriving from
    * a chat about BTC and landing on ETH would lose the thread. The side is
    * deliberately not armed for them: the banner names it, and the tap stays
@@ -239,7 +301,9 @@ export default function Home() {
    */
   useEffect(() => {
     if (!telegram.ready || !telegram.challenge) return;
-    setSymbol(telegram.challenge.symbol);
+    // An unfinished bet outranks an invitation. Switching the pill underneath a
+    // restored position would show one asset's chart above another's money.
+    if (!restoredRef.current) setSymbol(telegram.challenge.symbol);
     setChallenge(telegram.challenge);
   }, [telegram.ready, telegram.challenge]);
 
@@ -404,6 +468,7 @@ export default function Home() {
               position={position}
               settlement={settlement}
               streak={streak}
+              whileAway={restored}
               onShare={() =>
                 setShare({
                   kind: "result",

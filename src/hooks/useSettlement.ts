@@ -61,17 +61,25 @@ export function useSettlement(marketId: `0x${string}` | null): Settlement | null
           price: raw_price === null ? null : Number(raw_price) / STRIKE_SCALE,
           voided: market.voided,
         });
+
+        // A settled market stays settled. The watch is held open while the
+        // result is on screen, so without this it would go on asking the
+        // indexer the same answered question every three seconds.
+        clearInterval(timer);
       } catch {
         // Keep polling; a settled market stays settled, so a dropped read only
         // delays the answer.
       }
     }
 
+    // The interval is created before the first read so that read can cancel it
+    // the moment it has an answer.
+    const timer = setInterval(read, POLL_MS);
     read();
-    const id = setInterval(read, POLL_MS);
+
     return () => {
       live = false;
-      clearInterval(id);
+      clearInterval(timer);
     };
   }, [marketId]);
 

@@ -15,6 +15,8 @@ interface SettlementOverlayProps {
   /** What the contract decided — never a locally computed result. */
   settlement: Settlement;
   streak: number;
+  /** The bet was placed in an earlier session and settled while the app was shut. */
+  whileAway?: boolean;
   onShare: () => void;
   onNextRound: () => void;
 }
@@ -29,6 +31,7 @@ export function SettlementOverlay({
   position,
   settlement,
   streak,
+  whileAway = false,
   onShare,
   onNextRound,
 }: SettlementOverlayProps) {
@@ -61,6 +64,14 @@ export function SettlementOverlay({
         transition={{ type: "spring", stiffness: 320, damping: 24, delay: 0.06 }}
         className="relative flex flex-col items-center text-center"
       >
+        {/* A result that appears the instant the app opens, with no tap behind
+            it, reads as a glitch unless it says where it came from. */}
+        {whileAway && (
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+            Settled while you were away
+          </p>
+        )}
+
         <p
           className={`text-[13px] font-bold uppercase tracking-[0.2em] ${
             voided ? "text-zinc-400" : won ? "text-up-soft" : "text-down-soft"
