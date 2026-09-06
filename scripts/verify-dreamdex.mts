@@ -10,6 +10,7 @@ import { countdownTicks, windowLabel } from "../src/lib/format.ts";
 import { rememberPosition, recallPosition, forgetPosition } from "../src/lib/position-store.ts";
 import { streakOf, bestStreakOf, betNet } from "../src/lib/leaderboard.ts";
 import { formatRelativeTime } from "../src/lib/format.ts";
+import { WRITE_GAS, WRITE_MAX_FEE_WEI, WRITE_RESERVE_WEI } from "../src/lib/dreamdex/config.ts";
 import type { BinaryMarket } from "@somnia-chain/markets-sdk";
 import { challengeUrl, parseChallenge, challengeFromSearch, betText, resultText } from "../src/lib/challenge.ts";
 import { typicalMovePct, distancePct, minutesOfMovement, closeness, outcomeStreak, readPulse, formatPctValue } from "../src/lib/pulse.ts";
@@ -193,6 +194,38 @@ ok("the copy names the window the bet actually went into", (() => {
 ok("window lengths read the way a player would say them",
    windowLabel(60) === "1 min" && windowLabel(900) === "15 min" &&
    windowLabel(3600) === "1 hour" && windowLabel(14400) === "4 hours");
+
+// --- gas: the sponsor must fund above what the chain reserves ---
+//
+// This is the check that was missing. The ceiling was sized against the target
+// and never against the top-up line, so a wallet could sit richer than the line
+// the sponsor refills at and poorer than the reserve the chain demands: funded,
+// by the only measure the sponsor had, and unable to send anything at all. A
+// rejected transaction burns nothing, so nothing moved it out of that band.
+{
+  const RESERVE = WRITE_RESERVE_WEI;
+  const TOP_UP_BELOW = (RESERVE * 5n) / 4n;
+  const TARGET = RESERVE * 2n;
+
+  ok("the reserve is the ceiling times the fee cap, not the price paid",
+     RESERVE === WRITE_GAS * WRITE_MAX_FEE_WEI &&
+     RESERVE === 120000000000000000n, `${RESERVE}`);
+  ok("a wallet is refilled before it can no longer afford a write",
+     TOP_UP_BELOW > RESERVE, `${TOP_UP_BELOW} > ${RESERVE}`);
+  ok("a top-up leaves a wallet clear of the line it was rescued from",
+     TARGET > TOP_UP_BELOW, `${TARGET} > ${TOP_UP_BELOW}`);
+  ok("a funded wallet can afford more than one write",
+     TARGET / RESERVE >= 2n);
+  // The band that stranded a real player: 0.08 to 0.12 STT.
+  ok("there is no balance that is both funded and unable to transact", (() => {
+    for (let wei = 0n; wei <= TARGET; wei += RESERVE / 100n) {
+      const fundedEnough = wei >= TOP_UP_BELOW;
+      const canTransact = wei >= RESERVE;
+      if (fundedEnough && !canTransact) return false;
+    }
+    return true;
+  })());
+}
 
 // --- what a settled bet was worth, shared by the standings and the history ---
 //

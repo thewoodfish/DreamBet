@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createWalletClient, formatEther, http, isAddress, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { publicClient } from "@/lib/dreamdex/client";
-import { NETWORK, NETWORK_NAME } from "@/lib/dreamdex/config";
+import { NETWORK, NETWORK_NAME, WRITE_RESERVE_WEI } from "@/lib/dreamdex/config";
 import { telegramAuthConfigured, verifyTelegram } from "@/lib/server/telegram";
 
 /** Holds a private key, so it must never be prerendered or cached. */
@@ -24,30 +24,42 @@ export const dynamic = "force-dynamic";
  */
 
 /**
- * What a funded wallet is topped up to.
- *
- * Sized against a ceiling, not a cost — and against the ceiling's *fee cap*
- * rather than the price paid. A wallet must cover `gas x maxFeePerGas` before a
- * transaction is accepted, and while this chain settles at a flat 6 gwei the
- * wallet builds every transaction at 60 gwei, so the real demand is ten times
- * what the burn suggests. At `BET_GAS` in `trade.ts` — two million — that is
- * 0.12 STT a player must be holding to place a bet that costs them 0.0036.
- *
- * 0.15 clears it with enough over for the approval and the order both. Raising
- * that ceiling without raising this number stops every sponsored player dead;
- * they are one constraint written in two files.
+ * What the chain reserves before it will accept one of this app's writes.
+ * Everything below is derived from it — see `WRITE_RESERVE_WEI`.
  */
-const TARGET = parseEther(process.env.GAS_SPONSOR_TARGET_STT ?? "0.15");
+const RESERVE = WRITE_RESERVE_WEI;
 
 /**
- * Below this a wallet is topped up. It has to clear what the chain reserves per
- * write with room for the pair a first bet sends — a wallet held just under the
- * old half-target would have been called funded while being unable to send
- * anything at all.
+ * Below this a wallet is topped up.
+ *
+ * It has to sit *above* one write's reserve, not below it. When it sat below,
+ * there was a band — richer than the top-up line, poorer than the reserve — in
+ * which the sponsor considered a wallet funded and the chain refused everything
+ * it sent. A rejected transaction burns nothing, so a wallet that fell into
+ * that band stayed there: permanently unable to bet and never topped up.
  */
-const TOP_UP_BELOW = parseEther("0.08");
+const TOP_UP_BELOW = (RESERVE * 5n) / 4n;
 
-/** How often one address may be topped up, whatever it claims to be. */
+/**
+ * What a funded wallet is topped up to.
+ *
+ * Several writes clear of the top-up line, so one drip buys a session rather
+ * than a transaction — a target close to the line means the sponsor pays a
+ * transaction fee of its own for every couple of bets.
+ *
+ * The env override is floored rather than trusted: a target at or under the
+ * top-up line would refill a wallet straight back into the band it was rescued
+ * from, and do it every sixty seconds.
+ */
+const CONFIGURED_TARGET = process.env.GAS_SPONSOR_TARGET_STT
+  ? parseEther(process.env.GAS_SPONSOR_TARGET_STT)
+  : RESERVE * 2n;
+
+const TARGET =
+  CONFIGURED_TARGET > TOP_UP_BELOW + RESERVE / 2n
+    ? CONFIGURED_TARGET
+    : TOP_UP_BELOW + RESERVE / 2n;
+
 const COOLDOWN_MS = 60_000;
 
 /** Address -> last drip. Resets on redeploy; the balance check is the real cap. */

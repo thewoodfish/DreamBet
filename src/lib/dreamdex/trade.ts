@@ -2,32 +2,12 @@ import { createWalletClient, custom } from "viem";
 import { ORDER_TYPE, ContractRevertError, RpcError } from "@somnia-chain/markets-sdk";
 import type { PlaceOrderResult } from "@somnia-chain/markets-sdk";
 import { exchange, publicClient } from "./client";
-import { NETWORK } from "./config";
+import { NETWORK, WRITE_GAS } from "./config";
 import { descale, type StakeQuote } from "./book";
 import { isUserRejection } from "./errors";
 import type { DreamSigner } from "@/lib/account";
 
-/**
- * Gas ceiling for the writes a bet sends — the approval and the order itself.
- *
- * The ceiling is not a cost, but a wallet must be able to cover it before the
- * transaction will be accepted, and the figure it is covered against is
- * `maxFeePerGas`, not the price actually paid. On this chain those are an order
- * of magnitude apart: blocks settle at a flat 6 gwei, while the wallet builds
- * every transaction at a 60 gwei ceiling. So the SDK's default 10,000,000 asks
- * a player to be holding 0.6 STT to send a transaction that burns 0.0036 — four
- * times what the sponsor hands out, which is why the approval never left the
- * device.
- *
- * Two million is what the faucet already uses and what this wallet demonstrably
- * sends at: 0.12 STT against the 0.15 a funded player holds, and 3.4x the
- * 595,412 gas a DreamBet order was measured burning on these pools.
- *
- * The two numbers are bound together — `ceiling x 60 gwei` must stay under
- * `GAS_SPONSOR_TARGET_STT`, so raising one without the other strands every
- * sponsored player at the moment they tap Confirm.
- */
-const BET_GAS = 2_000_000n;
+
 
 export interface PlaceBetParams {
   /** The signed-in wallet — Privy's embedded one, normally. */
@@ -82,8 +62,9 @@ export async function placeBet({
     publicClient,
     decimals,
     // Applies to every write this trader sends, which for a first-time player
-    // is the approval as well as the order.
-    gas: BET_GAS,
+    // is the approval as well as the order. Shared with what the gas sponsor
+    // funds against, so the two cannot drift apart.
+    gas: WRITE_GAS,
   });
 
   const result = await trader.placeOrder({

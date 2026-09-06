@@ -102,6 +102,36 @@ export const APP_CADENCE_SECONDS = TRADED_CADENCES[0];
 export const PRICE_SERIES_CADENCE_SECONDS = 60;
 
 /**
+ * Gas ceiling for every write this app sends — the collateral approval, the
+ * order, and the faucet claim.
+ *
+ * Measured, not guessed: a DreamBet order burns 595,412 gas on these pools and
+ * the heaviest order from any caller burnt 3.65M. Two million is 3.4x our own
+ * and what the faucet has always used.
+ */
+export const WRITE_GAS = 2_000_000n;
+
+/**
+ * The fee cap the wallet builds transactions at.
+ *
+ * Not the price paid — blocks settle at a flat 6 gwei — but the figure the
+ * network checks a balance against, which is ten times that. Read off a real
+ * transaction from this app: `max_fee_per_gas: 60000000000`.
+ */
+export const WRITE_MAX_FEE_WEI = 60n * 10n ** 9n;
+
+/**
+ * What a wallet must be holding before the network will accept one of our
+ * writes, whatever the write goes on to burn. 0.12 STT.
+ *
+ * Every gas number in the app is derived from this rather than written down
+ * beside it. Two constants that merely agreed in a comment is exactly how a
+ * player ended up stranded: funded to a level the sponsor called healthy and
+ * the chain called too poor to transact.
+ */
+export const WRITE_RESERVE_WEI = WRITE_GAS * WRITE_MAX_FEE_WEI;
+
+/**
  * Assets DreamBet offers. dreamDEX has listed binary markets for all three, but
  * it does not roll them equally: BTC and ETH are rolled together on every
  * cadence, while SOL's only series is 5-minute and its creator has been stopped

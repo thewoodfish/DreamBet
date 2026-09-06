@@ -1,7 +1,7 @@
 import { createWalletClient, custom } from "viem";
 import { ContractRevertError, RpcError } from "@somnia-chain/markets-sdk";
 import { exchange, publicClient } from "./client";
-import { NETWORK, NETWORK_NAME } from "./config";
+import { NETWORK, NETWORK_NAME, WRITE_GAS } from "./config";
 import { isOutOfGasFunds, isUserRejection } from "./errors";
 import type { DreamSigner } from "@/lib/account";
 
@@ -57,7 +57,7 @@ export async function claimTestCollateral(
   const { hash } = await trader.faucet({
     testUsdc: collateral,
     amount: BigInt(FAUCET_CLAIM) * 10n ** BigInt(decimals),
-    gas: 2_000_000n,
+    gas: WRITE_GAS,
   });
 
   return hash;
