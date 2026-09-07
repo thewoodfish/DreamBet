@@ -52,7 +52,9 @@ And it waits for you. The open bet is remembered across launches, so a window th
 
 ## See it work
 
-**[t.me/thedreambetbot/dreambot](https://t.me/thedreambetbot/dreambot)** — open it from a group chat and the standings scope to that group.
+**[t.me/thedreambetbot/dreambet](https://t.me/thedreambetbot/dreambet?startapp)** — open it from a group chat and the standings scope to that group.
+
+The trailing `?startapp` is what makes the link launch the Mini App rather than open a chat with the bot. Every challenge link the app generates carries it too, with the challenge encoded in it.
 
 Or run it locally:
 
