@@ -4,10 +4,6 @@
 
 A Telegram Mini App on [dreamDEX](https://dreamdex.xyz) Event Contracts, running on the Somnia Network.
 
-<img src="docs/settlement-win.jpg" alt="The settlement screen after a winning bet, on a phone inside Telegram" width="320">
-
-*A real win on Shannon: +62.75 tUSDC on ETH, three in a row, one tap from the group chat it came from.*
-
 ---
 
 ## The argument happens in the group chat. The market doesn't.
