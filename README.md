@@ -183,7 +183,9 @@ Everything degrades rather than breaks. Haptics become no-ops, native share fall
 
 **It is a template rather than a fork.** Any asset dreamDEX lists appears in the pill row with no code change — SOL is already there, reading as paused, waiting for the first market. The same shell works for any binary window the venue rolls.
 
-**And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order can then attribute `builderFeeBpsTimes1k` to it. A sustainable version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is already in the SDK, capped by the venue, and approved by the player rather than taken from them. Nothing is charged today.
+**And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order then attributes `builderFeeBpsTimes1k` to it. A paid version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is in the SDK, capped by the venue, and approved by the player rather than taken from them.
+
+Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger.
 
 ---
 
@@ -194,7 +196,7 @@ DreamBet runs on Somnia's Shannon testnet today: the venue is live, the contract
 **Mainnet** is one env var for the chain, collateral and decimals, plus three things real money makes worth building:
 
 - **Withdrawals.** An amount-and-recipient screen doing an ERC-20 transfer through the existing signer, with Privy's key export beside it — so the embedded wallet is genuinely the player's, and reaching their own funds never depends on this app being up.
-- **A monitored sponsor.** The gas key underwrites every new player at 0.24 STT. That wants alerting and a per-address cap rather than a wallet somebody tops up by hand.
+- **A sponsor that is watched, and priced.** Onboarding costs 0.24 STT per player — paid once, not per bet, and a bet burns about 0.0065 STT, so one top-up carries a player roughly 35 to 40 bets. That is the whole unit economic: a fixed cost per person, a per-bet fee against it, and a retention number that decides whether they meet. It needs two guards it does not have — an alert before the sponsor empties, because the failure mode is that onboarding stops silently at exactly the moment the app is working, and a per-address cap, because today nothing stops fifty accounts draining it 0.24 at a time.
 - **More assets, as the venue lists them.** SOL is already in the pill row and reads as paused because dreamDEX has never rolled a SOL market. The moment one appears it goes live with no code change.
 
 **Beyond that, the group is the thing to build on.** The standings already know which Telegram chat every bet came from, which is the hard part. Seasons that reset, a group's leaderboard pinned in the chat, head-to-head records between two people who keep taking opposite sides — none of that needs new on-chain machinery, only more done with the identity the app already has.
