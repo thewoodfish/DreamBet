@@ -1,3 +1,5 @@
+<img src="docs/logo.png" alt="DreamBet" width="460">
+
 # DreamBet
 
 **Bet on where BTC, ETH or SOL closes in the next few minutes — from inside a Telegram group, in two taps, without ever meeting a wallet.**
