@@ -155,14 +155,8 @@ Everything degrades rather than breaks. Haptics become no-ops, native share fall
 
 ## For mainnet
 
-Shannon testnet is the right target for a hackathon: collateral is free, the venue is live, and nothing on screen is simulated. Pointing at mainnet is one env var — `NEXT_PUBLIC_SOMNIA_NETWORK=mainnet` switches chain, collateral and decimals — plus these, which real money makes worth building:
+DreamBet runs on Somnia's Shannon testnet today: the venue is live, the contracts are real, and nothing on screen is simulated — only the collateral is free. Pointing at mainnet is one env var — `NEXT_PUBLIC_SOMNIA_NETWORK=mainnet` switches chain, collateral and decimals — plus these, which real money makes worth building:
 
 - **Withdrawals.** An amount-and-recipient screen doing an ERC-20 transfer of collateral through the existing signer, and Privy's key export alongside it, so the embedded wallet is genuinely the player's and reaching their own funds never depends on this app being up. Testnet collateral is faucet-minted and worth nothing, so today the wallet only needs to receive.
 - **A funded, monitored sponsor.** The gas key currently underwrites every new player at 0.24 STT. On mainnet that wants alerting and a per-address cap rather than a wallet somebody tops up by hand.
 - **More assets, as the venue lists them.** SOL is already in the pill row and reads as paused because dreamDEX has never rolled a SOL market. The moment one appears it goes live with no code change.
-
----
-
-## Deploying
-
-Telegram hosts nothing — a Mini App is a URL in a webview — so deployment is your host's, and pushing to `main` is the whole release process. See [DEPLOYING.md](DEPLOYING.md) for BotFather registration, the build-time env vars, and how to test inside Telegram before you ship.
