@@ -1,10 +1,14 @@
-<img src="docs/logo.png" alt="DreamBet" width="460">
+<p align="center">
+  <img src="docs/logo.png" alt="DreamBet" width="440">
+</p>
 
-# DreamBet
+<p align="center">
+  <b>Bet on where BTC, ETH or SOL closes in the next few minutes — from inside a Telegram group, in two taps, without ever meeting a wallet.</b>
+</p>
 
-**Bet on where BTC, ETH or SOL closes in the next few minutes — from inside a Telegram group, in two taps, without ever meeting a wallet.**
-
-A Telegram Mini App on [dreamDEX](https://dreamdex.xyz) Event Contracts, running on the Somnia Network.
+<p align="center">
+  A Telegram Mini App on <a href="https://dreamdex.xyz">dreamDEX</a> Event Contracts, running on the Somnia Network.
+</p>
 
 ---
 
