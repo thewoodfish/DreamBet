@@ -102,6 +102,12 @@ refill to     = RESERVE × 2                 →   0.24 STT
 
 They are one constant, not four, because when they were separate a player ended up **richer than the refill line and poorer than the reserve** — funded by the only measure the sponsor had, and refused by the chain. A rejected transaction burns nothing, so nothing moved them out of it. There is now a test that walks every balance from zero to target and asserts no such band exists.
 
+### Event Contracts used as a price feed
+
+The venue publishes no standalone price API, and it turns out not to need one. Every market on the 1-minute series is created with a **fixed** strike, and that strike is the oracle's spot at the block the market was created in. Reading a run of them back *is* the oracle's own minute-by-minute history — real prints, on exactly the scale the longer windows settle against, taken from the same contracts the bet resolves on rather than from some third-party ticker that could disagree with them.
+
+The chart, the line drawn across it, and Market Pulse's typical-move figure all come out of that one observation. Reference-mode rows carry strike `0` as a sentinel, so they are dropped rather than plotted as a crash to zero.
+
 ### Honest about a venue that is not always there
 
 There is no locally-invented round: windows, strikes, odds and verdicts all come off dreamDEX. Which means the app has to tell the truth when the venue is having a bad day.
@@ -156,6 +162,20 @@ src/
 ### Running outside Telegram
 
 Everything degrades rather than breaks. Haptics become no-ops, native share falls back to the clipboard, `?startapp=` in the address bar stands in for a Telegram start parameter, and the "this group" leaderboard is disabled because there is no `chat_instance` to scope it by.
+
+---
+
+## Why this grows the venue
+
+**It reaches people who are not looking for a DEX.** A Mini App needs no install and no download — the distribution is a link in a chat somebody is already reading. The people this puts in front of Event Contracts are not traders shopping for a venue; they are the ones already arguing about the price.
+
+**Every bet asks for a counterparty.** The share card names the *opposite* side of the *same* window, so the viral loop does not merely add users — it adds order flow to both sides of one book. Six people arguing about BTC in a group chat become six market orders inside the same fifteen minutes, against each other, on dreamDEX's own liquidity.
+
+**It teaches Event Contracts without a tutorial.** Nobody is asked to learn what a strike, a binary outcome token or an IOC is. They see a line on a chart, two buttons and a payout, and the vocabulary arrives later if it arrives at all. Market Pulse does the same job for volatility: it says how far the line is in minutes of ordinary movement, which is a concept that needs no glossary.
+
+**It is a template rather than a fork.** Any asset dreamDEX lists appears in the pill row with no code change — SOL is already there, reading as paused, waiting for the first market. The same shell works for any binary window the venue rolls.
+
+**And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order can then attribute `builderFeeBpsTimes1k` to it. A sustainable version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is already in the SDK, capped by the venue, and approved by the player rather than taken from them. Nothing is charged today.
 
 ---
 
