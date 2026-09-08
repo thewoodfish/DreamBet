@@ -36,6 +36,18 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 
 ## The product
 
+<table>
+<tr>
+<td align="center"><img src="docs/board.jpg" width="150"><br><sub><b>The board</b></sub></td>
+<td align="center"><img src="docs/ticket.jpg" width="150"><br><sub><b>The ticket</b></sub></td>
+<td align="center"><img src="docs/pulse.jpg" width="150"><br><sub><b>Market Pulse</b></sub></td>
+<td align="center"><img src="docs/result-win.jpg" width="150"><br><sub><b>The result</b></sub></td>
+<td align="center"><img src="docs/record.jpg" width="150"><br><sub><b>Your record</b></sub></td>
+</tr>
+</table>
+
+*Every figure in those five shots is real: a live 15-minute ETH window, a 1.76× quote off the resting book, a settled +62.75, and a record of seven bets the chain actually resolved.*
+
 **The board.** Three assets as pills, each showing whether it has anything behind it right now — a dark one dims and refuses the tap rather than looking fine until you press it. A live price chart drawn from oracle prints, the line your bet settles against drawn across it, and a countdown that names the window it is counting: *15 min window*, *1 hour window*.
 
 **The ticket.** Tap UP or DOWN and a sheet asks the only remaining question: how much. Quick-stake pills, and a payout quoted by walking the pool's actual resting asks — so the multiplier on screen is the one your order can get, slippage included, not the top-of-book number it would miss.
@@ -52,7 +64,11 @@ It describes and never advises. A test asserts the copy never reaches for *bet*,
 
 And it waits for you. The open bet is remembered across launches, so a window that closed while Telegram was shut shows its result the next time you open the app, marked *settled while you were away*.
 
+<img src="docs/leaderboard.jpg" align="right" width="150">
+
 **The group.** Standings scoped to the chat you launched from, with a per-window tally of who is already in. Nothing on that table is taken on your word: a bet is written only once the chain confirms that exact transaction was sent by that exact address, and **the result is never stored at all** — outcomes are read back off the market when the table is built, so the one thing worth lying about cannot be sent.
+
+<br clear="all">
 
 ---
 
