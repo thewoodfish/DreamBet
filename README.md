@@ -172,7 +172,7 @@ The chart, the line drawn across it, and Market Pulse's typical-move figure all 
 There is no locally-invented round: windows, strikes, odds and verdicts all come off dreamDEX. Which means the app has to tell the truth when the venue is having a bad day.
 
 - **Four cadences, in a preference order.** 15-minute windows first, falling back through 5-minute, hourly and 1-minute — all four queried at once and ranked afterwards, so the *empty* case is one round trip rather than four. The window it found is named on the countdown, the ticket and the share card, because a bet that settles in an hour must not be described as five minutes to the group receiving it.
-- **Liveness is per asset.** BTC and ETH move together only because the same creator rolls them; SOL has been dark for days. Each pill reads its own.
+- **Liveness is per asset.** BTC and ETH move together only because the same creator rolls them; SOL's market has not gone live yet. Each pill reads its own.
 - **Two resolution modes.** A reference market settles against its opening oracle print; a fixed-strike market carries the line in its own question and never posts one. Reading only the opening print made every fixed-strike window unbettable — half the board — with no error, just buttons that never came alive.
 - **A void is never dressed as a loss.** The oracle declined to answer, the stake came back, and the record says `Void` rather than a red zero.
 
@@ -240,7 +240,7 @@ DreamBet runs on Somnia's Shannon testnet today: the venue is live, the contract
 
 - **Withdrawals.** An amount-and-recipient screen doing an ERC-20 transfer through the existing signer, with Privy's key export beside it — so the embedded wallet is genuinely the player's, and reaching their own funds never depends on this app being up.
 - **A sponsor that is watched, and capped.** The key paying for onboarding has two guards it does not have yet: an alert before it empties, because the failure mode is that onboarding stops silently at exactly the moment the app is working, and a per-address cap, because today nothing stops fifty accounts draining it 0.24 at a time.
-- **More assets, as the venue lists them.** SOL is already in the pill row and reads as paused because dreamDEX has never rolled a SOL market. The moment one appears it goes live with no code change.
+- **More assets, as the venue lists them.** SOL is already in the pill row and reads as paused because the SOL market on dreamDEX has not gone live yet. The moment it does, the pill lights up with no code change.
 
 **Beyond that, the group is the thing to build on.** The standings already know which Telegram chat every bet came from, which is the hard part. Seasons that reset, a group's leaderboard pinned in the chat, head-to-head records between two people who keep taking opposite sides — none of that needs new on-chain machinery, only more done with the identity the app already has.
 
