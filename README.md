@@ -216,7 +216,7 @@ src/
 
 ---
 
-## Why this grows the venue
+## Why this grows dreamDEX
 
 **It reaches people who are not looking for a DEX.** A Mini App needs no install and no download — the distribution is a link in a chat somebody is already reading. The people this puts in front of Event Contracts are not traders shopping for a venue; they are the ones already arguing about the price.
 
