@@ -43,13 +43,18 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 <td align="center" width="33%"><img src="docs/pulse.jpg" width="240" alt="Market Pulse"><br><sub><b>Market Pulse</b></sub></td>
 </tr>
 <tr>
-<td align="center" width="33%"><img src="docs/result-win.jpg" width="240" alt="The result"><br><sub><b>The result</b></sub></td>
+<td align="center" width="33%"><img src="docs/share.jpg" width="240" alt="The share card"><br><sub><b>The share card</b></sub></td>
+<td align="center" width="33%"><img src="docs/position.jpg" width="240" alt="The open bet"><br><sub><b>The open bet</b></sub></td>
+<td align="center" width="33%"><img src="docs/result-win.jpg" width="240" alt="A win"><br><sub><b>A win</b></sub></td>
+</tr>
+<tr>
+<td align="center" width="33%"><img src="docs/result-loss.jpg" width="240" alt="A miss"><br><sub><b>A miss</b></sub></td>
 <td align="center" width="33%"><img src="docs/record.jpg" width="240" alt="Your record"><br><sub><b>Your record</b></sub></td>
 <td align="center" width="33%"><img src="docs/leaderboard.jpg" width="240" alt="The group"><br><sub><b>The group</b></sub></td>
 </tr>
 </table>
 
-*Every figure in those six shots is real: a live 15-minute ETH window, a 1.76× quote off the resting book, a settled +62.75, and a record of seven bets the chain actually resolved.*
+*Every figure in those nine shots is real. One bet runs through them end to end: 9.70 tUSDC on ETH UP against a 2,484.79 strike, shared to the group at 3.13×, losing by seventeen cents with six minutes to run, and missed when the window settled at 2,484.40. Around it, a 1.76× quote off the resting book, a settled +62.75, and a record of seven bets the chain actually resolved.*
 
 **The board.** Three assets as pills, each showing whether it has anything behind it right now — a dark one dims and refuses the tap rather than looking fine until you press it. A live price chart drawn from oracle prints, the line your bet settles against drawn across it, and a countdown that names the window it is counting: *15 min window*, *1 hour window*.
 
