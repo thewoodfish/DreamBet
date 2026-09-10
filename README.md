@@ -230,6 +230,12 @@ src/
 
 Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger, which is gas. The sponsor pays for all of it: a new player's wallet is filled to 0.24 STT before their first transaction, most of which sits there as a float, and every bet after that burns about 0.0065 STT, refilled in drips of roughly 0.09 STT every fourteen or so bets. That is the whole unit economic: a builder fee on each bet against the gas on each bet, plus a one-off float per player that only pays back if they keep playing.
 
+The two sides scale differently, which is what makes the gap closable: the fee is a share of the stake, and the gas is a flat cost per bet. So there is a stake above which every bet pays for its own gas, and three levers that need nothing new built:
+
+- **A minimum stake** set at that break-even, so no bet runs at a loss.
+- **A per-address sponsorship cap,** so each player's float is a bounded cost of acquiring them rather than an open-ended one.
+- **Players paying their own gas past the cap.** On mainnet the wallet sheet already shows an address and QR code to send SOMI to, so sponsorship becomes onboarding rather than a subsidy that never ends.
+
 ---
 
 ## Where it goes
