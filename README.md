@@ -105,7 +105,11 @@ Then the standings, scoped to the chat you launched from, with a per-window tall
 
 The trailing `?startapp` is what makes the link launch the Mini App rather than open a chat with the bot. Every challenge link the app generates carries it too, with the challenge encoded in it.
 
-Or run it locally:
+---
+
+## Under the hood
+
+### Run it and test it
 
 ```bash
 npm install
@@ -115,18 +119,18 @@ npm run dev
 
 The layout is locked to mobile dimensions and renders in a phone frame on wider screens. Without a Privy app id it still prices real markets — it just has nothing to sign with, and says so. Test collateral is minted in-app: open the wallet sheet and tap **Get 10,000 tUSDC**, which calls `faucet()` on the TestUSDC contract itself.
 
-Nothing on screen is simulated, and there is a suite that proves it:
+The logic behind those screens is covered by two suites:
 
 ```bash
 npm run verify           # offline and deterministic — what CI gates on
 npm run verify:dreamdex  # the above, plus the live Shannon deployment
 ```
 
-`verify` covers the assumptions this code makes about itself: payout economics, stake sizing over a book, fill accounting, settlement direction, streak maths, the scoring rule shared by the standings and the history, the challenge-link parser, and the gas arithmetic below. No network, so a failure is always this repo's.
+`verify` covers what this code assumes about itself: payout economics, stake sizing over a book, fill accounting, settlement direction, streak maths, the scoring rule, the challenge-link parser and the gas arithmetic below. No network, so a failure is always this repo's.
 
-`verify:dreamdex` adds strike scaling, window shape, oracle prints, per-asset liveness and live book depth read off Shannon. Those assertions describe a third-party venue that times out, goes stale and stops rolling windows on its own schedule — real information, but not a regression here, which is why CI runs them without gating on them.
+`verify:dreamdex` adds strike scaling, window shape, oracle prints, per-asset liveness and live book depth read off Shannon. That venue times out and goes stale on its own schedule, so CI runs these without gating on them.
 
-Both suites read as sentences, because a failing check should say what broke rather than which line number did:
+Every check reads as a sentence, so a failure says what broke rather than which line did:
 
 ```
 PASS  a fixed-strike window's line is its strike, with no opening print needed
@@ -135,9 +139,13 @@ PASS  a void costs nothing, whichever side it was on
 PASS  the copy never advises a side
 ```
 
----
+### How a bet works
 
-## Under the hood
+1. `useDreamdexWindow` queries every cadence dreamDEX trades (15-minute, 5-minute, hourly and 1-minute) at once, picks the nearest window genuinely open, and reads the line it settles against — the strike for a fixed market, the opening print for a reference one.
+2. The ticket sizes the typed stake against the pool's resting asks, so the multiplier shown is the one this order can actually get.
+3. Confirm places a market IOC at the protective limit. UP buys YES, DOWN buys NO; outcome 0 is YES. The approval and the order are two transactions, because ERC-20 requires the pool to be authorised and every window is a new pool.
+4. The position is recorded from the transaction's own fills, never from the quote — the book can move between them, and only one of the two is a receipt.
+5. `useSettlement` waits for the market to resolve and reads `winningOutcome` off the contract.
 
 ### Gas, measured rather than guessed
 
@@ -167,6 +175,10 @@ There is no locally-invented round: windows, strikes, odds and verdicts all come
 - **Liveness is per asset.** BTC and ETH move together only because the same creator rolls them; SOL has been dark for days. Each pill reads its own.
 - **Two resolution modes.** A reference market settles against its opening oracle print; a fixed-strike market carries the line in its own question and never posts one. Reading only the opening print made every fixed-strike window unbettable — half the board — with no error, just buttons that never came alive.
 - **A void is never dressed as a loss.** The oracle declined to answer, the stake came back, and the record says `Void` rather than a red zero.
+
+### Running outside Telegram
+
+Everything degrades rather than breaks. Haptics become no-ops, native share falls back to the clipboard, `?startapp=` in the address bar stands in for a Telegram start parameter, and the "this group" leaderboard is disabled because there is no `chat_instance` to scope it by.
 
 ### Architecture
 
@@ -202,18 +214,6 @@ src/
 
 **Stack:** Next.js 14 (App Router) · Tailwind · Framer Motion · `@telegram-apps/sdk-react` · Privy embedded wallets · viem · `@somnia-chain/markets-sdk` · Upstash Redis for standings.
 
-### How a bet works
-
-1. `useDreamdexWindow` queries all four traded cadences at once, picks the nearest window genuinely open, and reads the line it settles against — the strike for a fixed market, the opening print for a reference one.
-2. The ticket sizes the typed stake against the pool's resting asks, so the multiplier shown is the one this order can actually get.
-3. Confirm places a market IOC at the protective limit. UP buys YES, DOWN buys NO; outcome 0 is YES. The approval and the order are two transactions, because ERC-20 requires the pool to be authorised and every window is a new pool.
-4. The position is recorded from the transaction's own fills, never from the quote — the book can move between them, and only one of the two is a receipt.
-5. `useSettlement` waits for the market to resolve and reads `winningOutcome` off the contract.
-
-### Running outside Telegram
-
-Everything degrades rather than breaks. Haptics become no-ops, native share falls back to the clipboard, `?startapp=` in the address bar stands in for a Telegram start parameter, and the "this group" leaderboard is disabled because there is no `chat_instance` to scope it by.
-
 ---
 
 ## Why this grows the venue
@@ -224,7 +224,7 @@ Everything degrades rather than breaks. Haptics become no-ops, native share fall
 
 **It teaches Event Contracts without a tutorial.** Nobody is asked to learn what a strike, a binary outcome token or an IOC is. They see a line on a chart, two buttons and a payout, and the vocabulary arrives later if it arrives at all. Market Pulse does the same job for volatility: it says how far the line is in minutes of ordinary movement, which is a concept that needs no glossary.
 
-**It is a template rather than a fork.** Any asset dreamDEX lists appears in the pill row with no code change — SOL is already there, reading as paused, waiting for the first market. The same shell works for any binary window the venue rolls.
+**It is a template rather than a fork.** Any asset dreamDEX lists appears in the pill row with no code change, and the same shell works for any binary window the venue rolls.
 
 **And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order then attributes `builderFeeBpsTimes1k` to it. A paid version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is in the SDK, capped by the venue, and approved by the player rather than taken from them.
 
