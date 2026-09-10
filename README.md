@@ -32,7 +32,7 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 
 **Your Telegram account is the login.** An embedded wallet is created behind it on first open. There is no seed phrase step, because there is no seed phrase to show — and a Telegram webview has no injected provider anyway, so an external wallet was never an option here.
 
-**Gas is never the player's problem.** Every public STT faucet wants a browser wallet to connect and a Mini App has none, so the app sponsors it: one key underwrites every new player's first transactions, before their collateral claim and before their first bet. The word "gas" appears nowhere in the interface.
+**Gas is never the player's problem.** Every public STT faucet wants a browser wallet to connect and a Mini App has none, so the app sponsors it: before every collateral claim and every bet, one key tops the player's wallet back up if it is running low. The word "gas" appears nowhere in the interface.
 
 **Betting is two taps.** Pick a side, pick an amount. The odds come off the live order book, the window comes off the contract, and the result comes off the chain.
 
@@ -228,7 +228,7 @@ src/
 
 **And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order then attributes `builderFeeBpsTimes1k` to it. A paid version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is in the SDK, capped by the venue, and approved by the player rather than taken from them.
 
-Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger: onboarding costs 0.24 STT per player — paid once, not per bet — and a bet burns about 0.0065 STT, so one top-up carries a player roughly 35 to 40 bets. That is the whole unit economic: a fixed cost per person, a per-bet fee against it, and a retention number that decides whether they meet.
+Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger, which is gas. The sponsor pays for all of it: a new player's wallet is filled to 0.24 STT before their first transaction, most of which sits there as a float, and every bet after that burns about 0.0065 STT, refilled in drips of roughly 0.09 STT every fourteen or so bets. That is the whole unit economic: a builder fee on each bet against the gas on each bet, plus a one-off float per player that only pays back if they keep playing.
 
 ---
 
@@ -239,7 +239,7 @@ DreamBet runs on Somnia's Shannon testnet today: the venue is live, the contract
 **Mainnet** is one env var for the chain, collateral and decimals, plus three things real money makes worth building:
 
 - **Withdrawals.** An amount-and-recipient screen doing an ERC-20 transfer through the existing signer, with Privy's key export beside it — so the embedded wallet is genuinely the player's, and reaching their own funds never depends on this app being up.
-- **A sponsor that is watched, and capped.** The key paying for onboarding has two guards it does not have yet: an alert before it empties, because the failure mode is that onboarding stops silently at exactly the moment the app is working, and a per-address cap, because today nothing stops fifty accounts draining it 0.24 at a time.
+- **A sponsor that is watched, and capped.** The key paying for everyone's gas has two guards it does not have yet: an alert before it empties, because the failure mode is that new players cannot start and existing ones run dry a few bets later, silently, at exactly the moment the app is working; and a per-address cap, because today nothing stops fifty accounts draining it 0.24 at a time.
 - **More assets, as the venue lists them.** SOL is already in the pill row and reads as paused because the SOL market on dreamDEX has not gone live yet. The moment it does, the pill lights up with no code change.
 
 **Beyond that, the group is the thing to build on.** The standings already know which Telegram chat every bet came from, which is the hard part. Seasons that reset, a group's leaderboard pinned in the chat, head-to-head records between two people who keep taking opposite sides — none of that needs new on-chain machinery, only more done with the identity the app already has.

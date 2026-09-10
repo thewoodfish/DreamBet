@@ -15,12 +15,13 @@ export const dynamic = "force-dynamic";
  * A wallet minted behind a Telegram login cannot buy its own gas: every public
  * STT faucet wants a browser wallet to connect, and there is no browser wallet
  * in a Mini App — that is the entire reason the embedded one exists. So the app
- * pays. One funded key underwrites every player's first transactions, which is
- * the only arrangement where "log in and bet" is actually two taps.
+ * pays. One funded key tops up every player's wallet whenever it runs low —
+ * the client asks before each collateral claim and each bet — which is the only
+ * arrangement where "log in and bet" is actually two taps.
  *
  * Deliberately gas only. Collateral is minted by the player's own wallet from
  * TestUSDC's public faucet, so this key never touches the money being bet with,
- * and the worst a drained sponsor can do is stop new players starting.
+ * and the worst a drained sponsor can do is stop players sending transactions.
  */
 
 /**
