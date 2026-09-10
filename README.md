@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Bet on where BTC, ETH or SOL closes in the next few minutes — from inside a Telegram group, in two taps, without ever meeting a wallet.</b>
+  <b>Bet on where BTC or ETH closes in the next few minutes — from inside a Telegram group, in two taps, without ever meeting a wallet.</b>
 </p>
 
 <p align="center">
