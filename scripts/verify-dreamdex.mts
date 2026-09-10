@@ -128,6 +128,22 @@ ok("a challenge survives the round trip through a link", (() => {
   const back = parseChallenge(param);
   return back?.from === "kelechi" && back.symbol === "BTC" && back.direction === "up";
 })(), link);
+// Most Telegram handles have an underscore in them. The SDK's decoder rewrote
+// every one as "/", so "kelechi" above passed while half of real users did not.
+ok("a handle with an underscore arrives as it was sent", (() => {
+  const sent = new URL(challengeUrl({ ...dare, from: "light_bearer02" }), "http://x").searchParams.get("startapp")!;
+  return parseChallenge(sent)?.from === "light_bearer02";
+})());
+ok("a param spelled in the URL-safe alphabet decodes", (() => {
+  const forged = Buffer.from(JSON.stringify({ f: "~~~", s: "ETH", d: "down" })).toString("base64url");
+  return /[-_]/.test(forged) && parseChallenge(forged)?.from === "~~~";
+})());
+ok("a link shared before the fix still opens", (() => {
+  // Exactly what the old code emitted: the SDK's encoder, padding stripped.
+  const old = "eyJmIjoibGlnaHRfYmVhcmVyMDIiLCJzIjoiRVRIIiwiZCI6InVwIn0";
+  const back = parseChallenge(old);
+  return back?.from === "light_bearer02" && back.symbol === "ETH" && back.direction === "up";
+})());
 ok("the same challenge is readable straight off a query string",
    challengeFromSearch(`?startapp=${param}`)?.symbol === "BTC");
 // Telegram accepts [A-Za-z0-9_-] in a start parameter and nothing else, so a

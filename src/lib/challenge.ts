@@ -1,4 +1,3 @@
-import { createStartParam, decodeStartParam } from "@telegram-apps/sdk-react";
 import { isTradableAsset, type TradableAsset } from "@/lib/dreamdex/config";
 import type { Direction } from "@/lib/round";
 
@@ -29,8 +28,8 @@ export interface Challenge {
  * letter each.
  */
 export function challengeUrl(challenge: Challenge): string {
-  const param = unpad(
-    createStartParam({
+  const param = encode(
+    JSON.stringify({
       f: challenge.from ?? "",
       s: challenge.symbol,
       d: challenge.direction,
@@ -55,7 +54,7 @@ export function parseChallenge(raw: string | undefined | null): Challenge | null
   if (!raw) return null;
 
   try {
-    const decoded = decodeStartParam(pad(raw), "json");
+    const decoded: unknown = JSON.parse(decode(raw));
     if (typeof decoded !== "object" || decoded === null) return null;
 
     const { f, s, d } = decoded as Record<string, unknown>;
@@ -130,13 +129,26 @@ function side(challenge: Challenge): string {
 }
 
 /**
- * Telegram accepts `[A-Za-z0-9_-]` in a start parameter and nothing else, so
- * the "=" the encoder pads base64 with would have the link rejected outright.
- * Padding is not part of canonical base64url anyway — it is recoverable from
- * the length, which is exactly what `pad` does on the way back in.
+ * UTF-8 in, base64url out. Telegram accepts `[A-Za-z0-9_-]` in a start
+ * parameter and nothing else, so the "=" padding is dropped too — it would have
+ * the link rejected outright, and it is recoverable from the length anyway.
  */
-function unpad(param: string): string {
-  return param.replace(/=+$/, "");
+function encode(value: string): string {
+  const binary = String.fromCharCode(...new TextEncoder().encode(value));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * The inverse. This is written here rather than taken from the Telegram SDK,
+ * whose `decodeStartParam` swaps the URL-safe alphabet back *after* decoding
+ * instead of before — so it rewrote every "_" in the payload as "/", and
+ * `@light_bearer02` arrived in the group as `@light/bearer02`. Links the SDK
+ * built are ordinary base64url and still decode here.
+ */
+function decode(param: string): string {
+  const binary = atob(pad(param.replace(/-/g, "+").replace(/_/g, "/")));
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
 /**
