@@ -10,6 +10,10 @@
   A Telegram Mini App on <a href="https://dreamdex.xyz">dreamDEX</a> Event Contracts, running on the Somnia Network.
 </p>
 
+<p align="center">
+  <b>Open it in Telegram: <a href="https://t.me/thedreambetbot/dreambet?startapp">t.me/thedreambetbot/dreambet?startapp</a></b>
+</p>
+
 ---
 
 ## The argument happens in the group chat. The market doesn't.
@@ -24,6 +28,8 @@ The on-chain venues have the mirror-image problem. dreamDEX runs real event cont
 
 DreamBet is a Telegram Mini App, so it opens inside the conversation. No install, no download, no context switch.
 
+<img src="docs/wallet.jpg" align="right" width="200" alt="The wallet">
+
 **Your Telegram account is the login.** An embedded wallet is created behind it on first open. There is no seed phrase step, because there is no seed phrase to show — and a Telegram webview has no injected provider anyway, so an external wallet was never an option here.
 
 **Gas is never the player's problem.** Every public STT faucet wants a browser wallet to connect and a Mini App has none, so the app sponsors it: one key underwrites every new player's first transactions, before their collateral claim and before their first bet. The word "gas" appears nowhere in the interface.
@@ -32,9 +38,13 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 
 **And the bet leaves as an invitation.** A placed bet becomes a share card aimed back at the group it came from, naming the *opposite* side — because yours is taken. Everyone bets into the same public dreamDEX window, where the liquidity is; the private part is the scoreboard between you and the people in that chat.
 
+<br clear="all">
+
 ---
 
 ## The product
+
+*Every figure in these screens is real: live 15-minute windows, quotes walked off the resting book, and results the chain actually resolved.*
 
 <table align="center">
 <tr>
@@ -42,28 +52,18 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 <td align="center" width="33%"><img src="docs/ticket.jpg" width="240" alt="The ticket"><br><sub><b>The ticket</b></sub></td>
 <td align="center" width="33%"><img src="docs/position.jpg" width="240" alt="The open bet"><br><sub><b>The open bet</b></sub></td>
 </tr>
-<tr>
-<td align="center" width="33%"><img src="docs/pulse.jpg" width="240" alt="Market Pulse: too close"><br><sub><b>Market Pulse: too close</b></sub></td>
-<td align="center" width="33%"><img src="docs/pulse-lead.jpg" width="240" alt="Market Pulse: clear lead"><br><sub><b>Market Pulse: clear lead</b></sub></td>
-<td align="center" width="33%"><img src="docs/wallet.jpg" width="240" alt="The wallet"><br><sub><b>The wallet</b></sub></td>
-</tr>
-<tr>
-<td align="center" width="33%"><img src="docs/result-win.jpg" width="240" alt="A win"><br><sub><b>A win</b></sub></td>
-<td align="center" width="33%"><img src="docs/result-loss.jpg" width="240" alt="A miss"><br><sub><b>A miss</b></sub></td>
-<td align="center" width="33%"><img src="docs/record.jpg" width="240" alt="Your record"><br><sub><b>Your record</b></sub></td>
-</tr>
-<tr>
-<td align="center" width="33%"><img src="docs/share.jpg" width="240" alt="The share card"><br><sub><b>The share card</b></sub></td>
-<td align="center" width="33%"><img src="docs/challenge.jpg" width="240" alt="A challenge arriving"><br><sub><b>A challenge arriving</b></sub></td>
-<td align="center" width="33%"><img src="docs/leaderboard.jpg" width="240" alt="The group"><br><sub><b>The group</b></sub></td>
-</tr>
 </table>
-
-*Every figure in these shots is real: live 15-minute windows, quotes walked off the resting book, and results the chain actually resolved.*
 
 **The board.** Three assets as pills, each showing whether it has anything behind it right now — a dark one dims and refuses the tap rather than looking fine until you press it. A live price chart drawn from oracle prints, the line your bet settles against drawn across it, and a countdown that names the window it is counting: *15 min window*, *1 hour window*.
 
-**The ticket.** Tap UP or DOWN and a sheet asks the only remaining question: how much. Quick-stake pills, and a payout quoted by walking the pool's actual resting asks — so the multiplier on screen is the one your order can get, slippage included, not the top-of-book number it would miss.
+**The ticket.** Tap UP or DOWN and a sheet asks the only remaining question: how much. Quick-stake pills, and a payout quoted by walking the pool's actual resting asks — so the multiplier on screen is the one your order can get, slippage included, not the top-of-book number it would miss. Once it fills, the bet sits under the chart with its strike, the live price and what it pays, marked *winning* or *losing* as the price crosses the line.
+
+<table align="center">
+<tr>
+<td align="center" width="33%"><img src="docs/pulse.jpg" width="240" alt="Market Pulse: too close"><br><sub><b>Market Pulse: too close</b></sub></td>
+<td align="center" width="33%"><img src="docs/pulse-lead.jpg" width="240" alt="Market Pulse: clear lead"><br><sub><b>Market Pulse: clear lead</b></sub></td>
+</tr>
+</table>
 
 **Market Pulse.** The read no exchange offers, because no exchange is betting on a fifteen-minute window: **how far the line is, measured in how far this asset actually travels in the time left.**
 
@@ -73,11 +73,29 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 
 It describes and never advises. A test asserts the copy never reaches for *bet*, *should*, *likely*, *will* or *predict*.
 
+<table align="center">
+<tr>
+<td align="center" width="33%"><img src="docs/result-win.jpg" width="240" alt="A win"><br><sub><b>A win</b></sub></td>
+<td align="center" width="33%"><img src="docs/result-loss.jpg" width="240" alt="A miss"><br><sub><b>A miss</b></sub></td>
+<td align="center" width="33%"><img src="docs/record.jpg" width="240" alt="Your record"><br><sub><b>Your record</b></sub></td>
+</tr>
+</table>
+
 **The result.** A full-screen takeover the moment the window closes. A win overshoots — the bloom swells past its resting size, eighteen sparks burst from behind the number, a second haptic beat lands with it. A loss stays deliberately quiet, because a miss is not a failure, and an app that performs at somebody who has just lost money is one they close.
 
-And it waits for you. The open bet is remembered across launches, so a window that closed while Telegram was shut shows its result the next time you open the app, marked *settled while you were away*.
+And it waits for you. The open bet is remembered across launches, so a window that closed while Telegram was shut shows its result the next time you open the app, marked *settled while you were away*. Every settled bet then lands in your record: streak, win rate, best run, and the bets behind them.
 
-**The group.** Standings scoped to the chat you launched from, with a per-window tally of who is already in. Nothing on that table is taken on your word: a bet is written only once the chain confirms that exact transaction was sent by that exact address, and **the result is never stored at all** — outcomes are read back off the market when the table is built, so the one thing worth lying about cannot be sent.
+<table align="center">
+<tr>
+<td align="center" width="33%"><img src="docs/share.jpg" width="240" alt="The share card"><br><sub><b>The share card</b></sub></td>
+<td align="center" width="33%"><img src="docs/challenge.jpg" width="240" alt="A challenge arriving"><br><sub><b>A challenge arriving</b></sub></td>
+<td align="center" width="33%"><img src="docs/leaderboard.jpg" width="240" alt="The group"><br><sub><b>The group</b></sub></td>
+</tr>
+</table>
+
+**The group.** It starts with the share card, sent back into the chat the bet came from. Whoever taps it lands on the same window with a banner naming the side still open — and the ticket stays shut until they choose to open it, because arriving from a chat to find a money dialog already up is a different product.
+
+Then the standings, scoped to the chat you launched from, with a per-window tally of who is already in. Nothing on that table is taken on your word: a bet is written only once the chain confirms that exact transaction was sent by that exact address, and **the result is never stored at all** — outcomes are read back off the market when the table is built, so the one thing worth lying about cannot be sent.
 
 ---
 
@@ -210,7 +228,7 @@ Everything degrades rather than breaks. Haptics become no-ops, native share fall
 
 **And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order then attributes `builderFeeBpsTimes1k` to it. A paid version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is in the SDK, capped by the venue, and approved by the player rather than taken from them.
 
-Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger.
+Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger: onboarding costs 0.24 STT per player — paid once, not per bet — and a bet burns about 0.0065 STT, so one top-up carries a player roughly 35 to 40 bets. That is the whole unit economic: a fixed cost per person, a per-bet fee against it, and a retention number that decides whether they meet.
 
 ---
 
@@ -221,7 +239,7 @@ DreamBet runs on Somnia's Shannon testnet today: the venue is live, the contract
 **Mainnet** is one env var for the chain, collateral and decimals, plus three things real money makes worth building:
 
 - **Withdrawals.** An amount-and-recipient screen doing an ERC-20 transfer through the existing signer, with Privy's key export beside it — so the embedded wallet is genuinely the player's, and reaching their own funds never depends on this app being up.
-- **A sponsor that is watched, and priced.** Onboarding costs 0.24 STT per player — paid once, not per bet, and a bet burns about 0.0065 STT, so one top-up carries a player roughly 35 to 40 bets. That is the whole unit economic: a fixed cost per person, a per-bet fee against it, and a retention number that decides whether they meet. It needs two guards it does not have — an alert before the sponsor empties, because the failure mode is that onboarding stops silently at exactly the moment the app is working, and a per-address cap, because today nothing stops fifty accounts draining it 0.24 at a time.
+- **A sponsor that is watched, and capped.** The key paying for onboarding has two guards it does not have yet: an alert before it empties, because the failure mode is that onboarding stops silently at exactly the moment the app is working, and a per-address cap, because today nothing stops fifty accounts draining it 0.24 at a time.
 - **More assets, as the venue lists them.** SOL is already in the pill row and reads as paused because dreamDEX has never rolled a SOL market. The moment one appears it goes live with no code change.
 
 **Beyond that, the group is the thing to build on.** The standings already know which Telegram chat every bet came from, which is the hard part. Seasons that reset, a group's leaderboard pinned in the chat, head-to-head records between two people who keep taking opposite sides — none of that needs new on-chain machinery, only more done with the identity the app already has.
