@@ -105,8 +105,8 @@ export const PRICE_SERIES_CADENCE_SECONDS = 60;
  * Gas ceiling for every write this app sends — the collateral approval, the
  * order, and the faucet claim.
  *
- * Measured, not guessed: a DreamBet order burns 595,412 gas on these pools and
- * the heaviest order from any caller burnt 3.65M. Two million is 3.4x our own
+ * Measured, not guessed: a DreamBet order burns 828,682 gas on these pools and
+ * the heaviest order from any caller burnt 3.65M. Two million is 2.4x our own
  * and what the faucet has always used.
  */
 export const WRITE_GAS = 2_000_000n;

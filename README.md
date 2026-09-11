@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Bet on where BTC or ETH closes in the next few minutes — from inside a Telegram group, in two taps, without ever meeting a wallet.</b>
+  <b>Bet on where BTC or ETH closes in the next fifteen minutes — from inside a Telegram group, with no install, no seed phrase and no gas to buy.</b>
 </p>
 
 <p align="center">
@@ -12,6 +12,12 @@
 
 <p align="center">
   <b>Open it in Telegram: <a href="https://t.me/thedreambetbot/dreambet?startapp">t.me/thedreambetbot/dreambet?startapp</a></b>
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" width="300" alt="Placing a BTC UP bet, signing it, sharing it, and winning when the window closes">
+  <br>
+  <sub>A real bet, start to finish: <a href="https://shannon-explorer.somnia.network/tx/0x00f9b5de0b5ba5b0fc34ee55a4d2de371c507c4a51763dc6686bfa7f4c8e110b">this transaction</a> on Shannon. The wallet prompts are sped up and the wait for the window to close is cut.</sub>
 </p>
 
 ---
@@ -28,19 +34,19 @@ The on-chain venues have the mirror-image problem. dreamDEX runs real event cont
 
 DreamBet is a Telegram Mini App, so it opens inside the conversation. No install, no download, no context switch.
 
-**Your Telegram account is the login.** An embedded wallet is created behind it on first open. There is no seed phrase step, because there is no seed phrase to show — and a Telegram webview has no injected provider anyway, so an external wallet was never an option here.
+**Your Telegram account is the login.** An embedded wallet is created behind it the first time you open the app, so there is no seed phrase to write down. An external wallet was never an option anyway: a Telegram webview has no injected provider.
 
-**Gas is never the player's problem.** Every public STT faucet wants a browser wallet to connect and a Mini App has none, so the app sponsors it: before every collateral claim and every bet, one key tops the player's wallet back up if it is running low. The word "gas" appears nowhere in the interface.
+**Gas is never the player's problem.** Public STT faucets all want a browser wallet, and a Mini App doesn't have one. So the app pays instead: before every tUSDC claim and every bet, a sponsor key tops the player's wallet up if it is running low. DreamBet's own screens never mention gas.
 
-**Betting is two taps.** Pick a side, pick an amount. The odds come off the live order book, the window comes off the contract, and the result comes off the chain.
+**A bet is a side and an amount.** Tap UP or DOWN, pick a stake, confirm, then sign the two transactions the wallet asks for: the approval and the order. The odds come from the live order book, the window from the contract, and the result from the chain.
 
-**And the bet leaves as an invitation.** A placed bet becomes a share card aimed back at the group it came from, naming the *opposite* side — because yours is taken. Everyone bets into the same public dreamDEX window, where the liquidity is; the private part is the scoreboard between you and the people in that chat.
+**And the bet leaves as an invitation.** A placed bet becomes a share card sent back to the group it came from, naming the *opposite* side, because yours is taken. Everyone bets into the same public dreamDEX window, where the liquidity is. What belongs to the group is the scoreboard between you and the people in that chat.
 
 ---
 
 ## The product
 
-*Every figure in these screens is real: live 15-minute windows, quotes walked off the resting book, and results the chain actually resolved.*
+*Every figure in these screens is real: live dreamDEX windows, quotes walked off the resting book, and results the chain actually resolved.*
 
 <table align="center">
 <tr>
@@ -50,9 +56,9 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 </tr>
 </table>
 
-**The board.** Three assets as pills, each showing whether it has anything behind it right now — a dark one dims and refuses the tap rather than looking fine until you press it. A live price chart drawn from oracle prints, the line your bet settles against drawn across it, and a countdown that names the window it is counting: *15 min window*, *1 hour window*.
+**The board.** Three asset pills. One with no live market behind it is dimmed and can't be tapped, instead of looking fine until you press it. Below them, a price chart built from oracle prints with the line your bet settles against drawn across it, and a countdown that says which window it is counting: *15 min window*, *1 hour window*.
 
-**The ticket.** Tap UP or DOWN and a sheet asks the only remaining question: how much. Quick-stake pills, and a payout quoted by walking the pool's actual resting asks — so the multiplier on screen is the one your order can get, slippage included, not the top-of-book number it would miss. Once it fills, the bet sits under the chart with its strike, the live price and what it pays, marked *winning* or *losing* as the price crosses the line.
+**The ticket.** Tap UP or DOWN and a sheet asks how much. The payout is quoted by walking the pool's resting asks, so the multiplier on screen is what your order will actually get, slippage included — not the top-of-book price it would miss. Once it fills, the bet sits under the chart with its strike, the live price and what it pays, marked *winning* or *losing* as the price crosses the line.
 
 <table align="center">
 <tr>
@@ -61,11 +67,11 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 </tr>
 </table>
 
-**Market Pulse.** The read no exchange offers, because no exchange is betting on a fifteen-minute window: **how far the line is, measured in how far this asset actually travels in the time left.**
+**Market Pulse** shows **how far the price is from the line, measured in how far this asset normally moves in the time left.** Exchanges don't show this, because nobody on an exchange is betting on a fifteen-minute window.
 
 > *"BTC is 0.05% above the line, which is about 2 minutes of movement — UP is ahead, but the line is still in reach."*
 
-0.05% means nothing alone. It means a great deal once you know BTC covers it in a typical minute and there are four minutes to run. A track draws the same comparison in space — the shaded band is everything reachable before expiry, and the dot drifts outward on its own as the clock runs down. Underneath: the median one-minute move from real prints, how the last six windows actually settled, resting book depth, and how many of your group are already in.
+0.05% means nothing on its own. It means a great deal once you know BTC typically covers it in two minutes and there are four minutes to run. A track draws the same comparison in space — the shaded band is everything reachable before expiry, and the dot drifts outward on its own as the clock runs down. Underneath: the median one-minute move from real prints, how the last six windows actually settled, resting book depth, and how many of your group are already in.
 
 It describes and never advises. A test asserts the copy never reaches for *bet*, *should*, *likely*, *will* or *predict*.
 
@@ -77,7 +83,7 @@ It describes and never advises. A test asserts the copy never reaches for *bet*,
 </tr>
 </table>
 
-**The result.** A full-screen takeover the moment the window closes. A win overshoots — the bloom swells past its resting size, eighteen sparks burst from behind the number, a second haptic beat lands with it. A loss stays deliberately quiet, because a miss is not a failure, and an app that performs at somebody who has just lost money is one they close.
+**The result.** A full-screen takeover the moment the window closes. A win overshoots — the bloom swells past its resting size, eighteen sparks burst from behind the number, a second haptic beat lands with it. A loss stays quiet on purpose: an app that puts on a show for someone who has just lost money is an app they close.
 
 And it waits for you. The open bet is remembered across launches, so a window that closed while Telegram was shut shows its result the next time you open the app, marked *settled while you were away*. Every settled bet then lands in your record: streak, win rate, best run, and the bets behind them.
 
@@ -85,21 +91,36 @@ And it waits for you. The open bet is remembered across launches, so a window th
 <tr>
 <td align="center" width="33%"><img src="docs/share.jpg" width="240" alt="The share card"><br><sub><b>The share card</b></sub></td>
 <td align="center" width="33%"><img src="docs/challenge.jpg" width="240" alt="A challenge arriving"><br><sub><b>A challenge arriving</b></sub></td>
-<td align="center" width="33%"><img src="docs/leaderboard.jpg" width="240" alt="The group"><br><sub><b>The group</b></sub></td>
+<td align="center" width="33%"><img src="docs/leaderboard.jpg" width="240" alt="The standings"><br><sub><b>The standings</b></sub></td>
 </tr>
 </table>
 
-**The group.** It starts with the share card, sent back into the chat the bet came from. Whoever taps it lands on the same window with a banner naming the side still open — and the ticket stays shut until they choose to open it, because arriving from a chat to find a money dialog already up is a different product.
+**The group.** It starts with the share card, sent back into the chat the bet came from. Whoever taps it lands on the same window with a banner naming the side still open. The ticket stays shut until they choose to open it: tapping a friend's link and finding a payment dialog already up would feel like an ambush.
 
-Then the standings, scoped to the chat you launched from, with a per-window tally of who is already in. Nothing on that table is taken on your word: a bet is written only once the chain confirms that exact transaction was sent by that exact address, and **the result is never stored at all** — outcomes are read back off the market when the table is built, so the one thing worth lying about cannot be sent.
+Then the standings, for the chat you launched from or for everyone who has played, plus a per-window tally of who is already in. Nothing on that table is taken on your word. A bet is written only once the chain confirms that exact transaction was sent by that exact address, and **the result is never stored at all**: outcomes are read back off the market every time the table is built, so nobody can submit a win they didn't have.
 
 ---
 
-## See it work
+## Try it
 
-**[t.me/thedreambetbot/dreambet?startapp](https://t.me/thedreambetbot/dreambet?startapp)** — open it from a group chat and the standings scope to that group.
+1. **Open [t.me/thedreambetbot/dreambet?startapp](https://t.me/thedreambetbot/dreambet?startapp) in Telegram.** Post it in a group chat and open it from there if you want the "This group" standings. Sign in with Telegram, and your wallet is created behind it.
+2. **Get test money.** Tap your balance in the top-right corner, then **Get 10,000 tUSDC**. The app covers the gas.
+3. **Bet.** Tap UP or DOWN, pick a stake, tap **Confirm Prediction**, and approve the two wallet prompts.
+4. **Wait for the window to close.** You can leave Telegram in the meantime; the result is waiting when you come back. Then tap **Challenge Friends in Group** to send the other side to the chat.
 
 The trailing `?startapp` is what makes the link launch the Mini App rather than open a chat with the bot. Every challenge link the app generates carries it too, with the challenge encoded in it.
+
+### Check it on-chain
+
+Every bet in the app is an ordinary dreamDEX order that anyone can look up on the [Shannon explorer](https://shannon-explorer.somnia.network). The one in the GIF above:
+
+| | |
+|---|---|
+| The bet | [`0x00f9b5de…e110b`](https://shannon-explorer.somnia.network/tx/0x00f9b5de0b5ba5b0fc34ee55a4d2de371c507c4a51763dc6686bfa7f4c8e110b) — a 10 tUSDC stake on BTC UP. 9.79 filled, and the 0.21 the book couldn't fill came back in the same transaction |
+| That window's pool | [`0x898002B0B95FBEDF76c15A650ed0dE23cD6fC113`](https://shannon-explorer.somnia.network/address/0x898002B0B95FBEDF76c15A650ed0dE23cD6fC113) — every window is its own pool, which is why each one needs its own approval |
+| Collateral (TestUSDC) | [`0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`](https://shannon-explorer.somnia.network/address/0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E) — the faucet the wallet sheet calls |
+| dreamDEX MarketsCore | [`0x2802504314685D89bF6C992CA5a8e7cC78bc0294`](https://shannon-explorer.somnia.network/address/0x2802504314685D89bF6C992CA5a8e7cC78bc0294) |
+| dreamDEX OracleHub | [`0xe40db387cC98601Dd11bd634fF2f3AD5686dE32b`](https://shannon-explorer.somnia.network/address/0xe40db387cC98601Dd11bd634fF2f3AD5686dE32b) |
 
 ---
 
@@ -137,7 +158,7 @@ PASS  the copy never advises a side
 
 ### How a bet works
 
-1. `useDreamdexWindow` queries every cadence dreamDEX trades (15-minute, 5-minute, hourly and 1-minute) at once, picks the nearest window genuinely open, and reads the line it settles against — the strike for a fixed market, the opening print for a reference one.
+1. `useDreamdexWindow` queries every cadence dreamDEX trades (15-minute, 5-minute, hourly and 1-minute) at once, picks the first one in that order with a window genuinely open, and reads the line it settles against — the strike for a fixed market, the opening print for a reference one.
 2. The ticket sizes the typed stake against the pool's resting asks, so the multiplier shown is the one this order can actually get.
 3. Confirm places a market IOC at the protective limit. UP buys YES, DOWN buys NO; outcome 0 is YES. The approval and the order are two transactions, because ERC-20 requires the pool to be authorised and every window is a new pool.
 4. The position is recorded from the transaction's own fills, never from the quote — the book can move between them, and only one of the two is a receipt.
@@ -145,9 +166,9 @@ PASS  the copy never advises a side
 
 ### Gas, measured rather than guessed
 
-Somnia settles at a flat 6 gwei, but a wallet is checked against `gas × maxFeePerGas`, and the wallet builds every transaction at a **60 gwei** cap — ten times the price actually paid. With the SDK's default 10,000,000 gas ceiling, placing a bet demanded **0.6 STT on hand** to burn 0.0036. Nobody could bet.
+Somnia settles at a flat 6 gwei, but a wallet is checked against `gas × maxFeePerGas`, and the wallet builds every transaction at a **60 gwei** cap — ten times the price actually paid. With the SDK's default 10,000,000 gas ceiling, placing a bet demanded **0.6 STT on hand** to burn 0.005. Nobody could bet.
 
-So the ceiling is measured: a DreamBet order burns **595,412 gas**, and the heaviest order any caller has sent to these pools burnt 3.65M. `WRITE_GAS` is 2,000,000, and every other number derives from it:
+So the ceiling is measured: a DreamBet order burns **828,682 gas** ([the demo bet](https://shannon-explorer.somnia.network/tx/0x00f9b5de0b5ba5b0fc34ee55a4d2de371c507c4a51763dc6686bfa7f4c8e110b) is one), and the heaviest order any caller has sent to these pools burnt 3.65M. `WRITE_GAS` is 2,000,000, and every other number derives from it:
 
 ```
 WRITE_RESERVE = WRITE_GAS × WRITE_MAX_FEE   →   0.12 STT
@@ -214,23 +235,29 @@ src/
 
 ## Why this grows dreamDEX
 
-**It reaches people who are not looking for a DEX.** A Mini App needs no install and no download — the distribution is a link in a chat somebody is already reading. The people this puts in front of Event Contracts are not traders shopping for a venue; they are the ones already arguing about the price.
+**It reaches people who are not looking for a DEX.** The distribution is a link in a chat somebody is already reading. The people it puts in front of Event Contracts are not traders shopping for a venue; they are the ones already arguing about the price.
 
-**Every bet asks for a counterparty.** The share card names the *opposite* side of the *same* window, so the viral loop does not merely add users — it adds order flow to both sides of one book. Six people arguing about BTC in a group chat become six market orders inside the same fifteen minutes, against each other, on dreamDEX's own liquidity.
+**Every bet asks for a counterparty.** The share card names the *opposite* side of the *same* window, so the loop adds order flow to both sides of one book, not just users. Six people arguing about BTC in a group chat become six orders in the same fifteen minutes, on dreamDEX's own liquidity.
 
-**It teaches Event Contracts without a tutorial.** Nobody is asked to learn what a strike, a binary outcome token or an IOC is. They see a line on a chart, two buttons and a payout, and the vocabulary arrives later if it arrives at all. Market Pulse does the same job for volatility: it says how far the line is in minutes of ordinary movement, which is a concept that needs no glossary.
+**It teaches Event Contracts without a tutorial.** Nobody has to learn what a strike, an outcome token or an IOC is. They see a line on a chart, two buttons and a payout. Market Pulse does the same for volatility, stating distance to the line in minutes of ordinary movement.
 
-**It is a template rather than a fork.** Any asset dreamDEX lists appears in the pill row with no code change, and the same shell works for any binary window the venue rolls.
+**It is a template, not a fork.** Any asset dreamDEX lists appears in the pill row with no code change, and the same shell works for any binary window the venue rolls.
 
-**And it can pay for itself with the venue's own primitive.** The pools carry a builder fee: a trader opts a frontend in through `approveBuilder` up to a ceiling the venue froze, and each order then attributes `builderFeeBpsTimes1k` to it. A paid version of DreamBet needs no custom contracts and no rake invented on top — the mechanism is in the SDK, capped by the venue, and approved by the player rather than taken from them.
+**And it can pay for itself with the venue's own builder fee.** A player opts a frontend in with `approveBuilder`, up to a ceiling the venue sets, and each order then pays that frontend a share. No custom contracts, no invented rake, and nothing taken without the player's approval.
 
-Nothing is charged today, and no rate is named here on purpose: `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling a frontend must sit under has not been published yet. What is already known is the other half of the ledger, which is gas. The sponsor pays for all of it: a new player's wallet is filled to 0.24 STT before their first transaction, most of which sits there as a float, and every bet after that burns about 0.0065 STT, refilled in drips of roughly 0.09 STT every fourteen or so bets. That is the whole unit economic: a builder fee on each bet against the gas on each bet, plus a one-off float per player that only pays back if they keep playing.
+Nothing is charged today. `maxBuilderFeeBps` reads as null on every Shannon market, so the ceiling hasn't been published and no rate is named here. The cost side is already known, because the sponsor pays all of it:
 
-The two sides scale differently, which is what makes the gap closable: the fee is a share of the stake, and the gas is a flat cost per bet. So there is a stake above which every bet pays for its own gas, and three levers that need nothing new built:
+| Gas the sponsor pays | STT |
+|---|---|
+| Filling a new player's wallet before their first transaction (mostly a float that stays there) | 0.24 |
+| Each bet after that (approval + order) | ~0.0065 |
+| Each refill, about every fourteen bets | ~0.09 |
 
-- **A minimum stake** set at that break-even, so no bet runs at a loss.
-- **A per-address sponsorship cap,** so each player's float is a bounded cost of acquiring them rather than an open-ended one.
-- **Players paying their own gas past the cap.** On mainnet the wallet sheet already shows an address and QR code to send SOMI to, so sponsorship becomes onboarding rather than a subsidy that never ends.
+The fee is a share of the stake and the gas is a flat cost per bet, so above some stake every bet pays for its own gas. Three levers close the gap, none of which needs anything new built:
+
+- **A minimum stake** at that break-even point.
+- **A per-address sponsorship cap,** so each player's float is a fixed cost of acquiring them.
+- **Players paying their own gas past the cap.** On mainnet the wallet sheet already shows an address and QR code to send SOMI to, so sponsorship becomes onboarding rather than a permanent subsidy.
 
 ---
 
