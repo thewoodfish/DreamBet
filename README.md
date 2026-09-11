@@ -28,8 +28,6 @@ The on-chain venues have the mirror-image problem. dreamDEX runs real event cont
 
 DreamBet is a Telegram Mini App, so it opens inside the conversation. No install, no download, no context switch.
 
-<img src="docs/wallet.jpg" align="right" width="200" alt="The wallet">
-
 **Your Telegram account is the login.** An embedded wallet is created behind it on first open. There is no seed phrase step, because there is no seed phrase to show — and a Telegram webview has no injected provider anyway, so an external wallet was never an option here.
 
 **Gas is never the player's problem.** Every public STT faucet wants a browser wallet to connect and a Mini App has none, so the app sponsors it: before every collateral claim and every bet, one key tops the player's wallet back up if it is running low. The word "gas" appears nowhere in the interface.
@@ -37,8 +35,6 @@ DreamBet is a Telegram Mini App, so it opens inside the conversation. No install
 **Betting is two taps.** Pick a side, pick an amount. The odds come off the live order book, the window comes off the contract, and the result comes off the chain.
 
 **And the bet leaves as an invitation.** A placed bet becomes a share card aimed back at the group it came from, naming the *opposite* side — because yours is taken. Everyone bets into the same public dreamDEX window, where the liquidity is; the private part is the scoreboard between you and the people in that chat.
-
-<br clear="all">
 
 ---
 
